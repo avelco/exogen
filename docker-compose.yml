@@ -9,7 +9,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    command: ["pnpm", "run", "dev", "--", "--host"]
+    command: ["pnpm", "run", "dev", "--host", "0.0.0.0"]
     environment:
       - CHOKIDAR_USEPOLLING=true
     labels:
