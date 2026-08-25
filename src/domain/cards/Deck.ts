@@ -1,4 +1,4 @@
-import { makeRunCard, type RunCard } from './Card'
+import { makeRunCard, makeRunCardFromRef, type RunCard } from './Card'
 
 export const HAND_SIZE = 5
 export const DEFAULT_DECK_SIZE = 10
@@ -24,7 +24,9 @@ export function createCombatDeck(
   actionSlots = DEFAULT_ACTION_SLOTS,
   rng: () => number = Math.random,
 ): CombatDeck {
-  const draw = defIds.map(makeRunCard)
+  const draw = defIds
+    .map(id => makeRunCardFromRef(id) ?? makeRunCard(id))
+    .filter((c): c is RunCard => c != null)
   shuffleInPlace(draw, rng)
   return {
     draw,

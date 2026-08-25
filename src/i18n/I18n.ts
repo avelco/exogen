@@ -55,6 +55,14 @@ export function passiveDesc(id: string): string {
   return tKey(`passive.${id}.desc`, '')
 }
 
+export function treeNodeName(id: string): string {
+  return tKey(`tree.node.${id}.name`, id)
+}
+
+export function treeNodeDesc(id: string): string {
+  return tKey(`tree.node.${id}.desc`, '')
+}
+
 export function abilityName(id: string): string {
   return tKey(`ability.${id}.name`, id)
 }
@@ -65,22 +73,6 @@ export function abilityDesc(id: string): string {
 
 export function enemyName(id: string): string {
   return tKey(`enemy.${id}`, id)
-}
-
-export function charName(kitName: string): string {
-  return tKey(`char.${kitName}.name`, kitName)
-}
-
-export function charLore(kitName: string): string {
-  return tKey(`char.${kitName}.lore`, '')
-}
-
-export function charBuff(kitName: string): string {
-  return tKey(`char.${kitName}.buff`, '')
-}
-
-export function charHandicap(kitName: string): string {
-  return tKey(`char.${kitName}.handicap`, '')
 }
 
 export function slotLabel(slot: GearSlot): string {

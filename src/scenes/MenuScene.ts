@@ -13,7 +13,6 @@ const SCENE_KEYS = [
   'BootScene',
   'PreloadScene',
   'MenuScene',
-  'CharacterSelectScene',
   'MapScene',
   'CombatScene',
   'RewardScene',
@@ -23,6 +22,8 @@ const SCENE_KEYS = [
   'GameOverScene',
   'InventoryScene',
 ]
+
+const DESCEND_KEY = '__descend__'
 
 interface MenuItem {
   label: string
@@ -51,7 +52,7 @@ export class MenuScene extends Phaser.Scene {
 
     // Brand-new players: open starter packs once, then floor 1.
     if (!MetaProgression.hasOpenedStarterPacks()) {
-      this.scene.start('PackOpenScene', { mode: 'starter', characterName: 'Paladín' })
+      this.scene.start('PackOpenScene', { mode: 'starter' })
       return
     }
     if (!MetaProgression.isTutorialDone()) {
@@ -59,20 +60,20 @@ export class MenuScene extends Phaser.Scene {
       const state =
         existing && existing.floor === 1
           ? existing
-          : startCampaignRun('Paladín', 1)
+          : startCampaignRun(1)
       this.scene.start('MapScene', { runState: state })
       return
     }
 
     const { width, height } = this.cameras.main
     const cx = width / 2
-    const startY = 96
-    const spacing = 28
+    const startY = 84
+    const spacing = 24
 
     const unlock = () => AudioSystem.unlock()
     this.input.on('pointerdown', unlock)
 
-    addPixelText(this, cx, 36, 'DICE & DEPTHS', {
+    addPixelText(this, cx, 36, 'EXPUGNATIO', {
       fontSize: '16px',
       color: '#ffffff',
     }).setOrigin(0.5)
@@ -84,11 +85,14 @@ export class MenuScene extends Phaser.Scene {
 
     const floor = MetaProgression.getCampaignFloor()
     const entries: ReadonlyArray<readonly [string, string]> = [
-      [t('menu.descendFloor', { n: floor }), 'CharacterSelectScene'],
+      [t('menu.descendFloor', { n: floor }), DESCEND_KEY],
       [t('menu.deck'), 'DeckScene'],
+      [t('menu.store'), 'StoreScene'],
+      [t('menu.ascension'), 'AscensionScene'],
       [t('menu.inventory'), 'InventoryScene'],
       [t('menu.forge'), 'ForgeScene'],
       [t('menu.tree'), 'SkillTreeScene'],
+      [t('menu.lore'), 'LoreScene'],
       [t('menu.options'), 'OptionsScene'],
     ]
 
@@ -156,6 +160,17 @@ export class MenuScene extends Phaser.Scene {
     if (!item) return
     AudioSystem.unlock()
     AudioSystem.play('select')
-    this.time.delayedCall(150, () => this.scene.start(item.sceneKey))
+    this.time.delayedCall(150, () => {
+      if (item.sceneKey === DESCEND_KEY) {
+        if (!MetaProgression.hasOpenedStarterPacks()) {
+          this.scene.start('PackOpenScene', { mode: 'starter' })
+          return
+        }
+        const state = startCampaignRun()
+        this.scene.start('MapScene', { runState: state })
+        return
+      }
+      this.scene.start(item.sceneKey)
+    })
   }
 }

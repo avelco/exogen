@@ -1,13 +1,28 @@
 import affixesData from '../../data/affixes.json'
-import type { ModStat, StatMod } from './Item'
+import {
+  ELEMENTS,
+  ELEMENT_ABBR_KEY,
+  type Element,
+} from '../combat/Elements'
+import { formatMod, type ModStat } from './Item'
+import { tKey } from '../../i18n/I18n'
 
 export type AffixTier = 'common' | 'blue' | 'purple' | 'gold'
+
+export type AffixStat =
+  | ModStat
+  | 'poisonAmp'
+  | 'resist'
+  | 'elementDmg'
+
+export type AffixElement = Element | 'all'
 
 export interface AffixDef {
   id: string
   tier: AffixTier
-  stat: ModStat
+  stat: AffixStat
   value: number
+  element?: AffixElement
 }
 
 const AFFIXES: AffixDef[] = (affixesData as { affixes: AffixDef[] }).affixes
@@ -29,12 +44,57 @@ export const AFFIX_TIER_COLORS: Record<AffixTier, string> = {
 
 export const FORGE_REROLL_COST = 3
 
+const FLAT_STATS: ModStat[] = ['maxHp', 'defFlat', 'dmgFlat', 'startGold']
+
+export function allAffixes(): AffixDef[] {
+  return AFFIXES
+}
+
 export function affixDef(id: string): AffixDef | undefined {
   return AFFIXES.find(a => a.id === id)
 }
 
-export function affixAsMod(affix: AffixDef): StatMod {
-  return { stat: affix.stat, value: affix.value }
+function elementLabel(el: AffixElement): string {
+  if (el === 'all') return '*'
+  return tKey(ELEMENT_ABBR_KEY[el], el[0]!.toUpperCase())
+}
+
+/** Display label for forge UI / tooltips. */
+export function formatAffix(affix: AffixDef): string {
+  const sign = affix.value >= 0 ? '+' : ''
+  switch (affix.stat) {
+    case 'maxHp':
+    case 'defFlat':
+    case 'dmgFlat':
+    case 'startGold':
+      return formatMod({ stat: affix.stat, value: affix.value })
+    case 'poisonAmp':
+      return `${sign}${affix.value} ${tKey('card.effect.poison', 'VENENO')}`
+    case 'resist': {
+      const el = affix.element ?? 'all'
+      return `${sign}${affix.value}% R.${elementLabel(el)}`
+    }
+    case 'elementDmg': {
+      const el = affix.element ?? 'all'
+      return `${sign}${affix.value} DMG ${elementLabel(el)}`
+    }
+    default:
+      return `${sign}${affix.value}`
+  }
+}
+
+export function isFlatAffixStat(stat: AffixStat): stat is ModStat {
+  return (FLAT_STATS as string[]).includes(stat)
+}
+
+export function isValidAffix(a: AffixDef): boolean {
+  if (!a || typeof a.value !== 'number' || !Number.isFinite(a.value)) return false
+  if (a.stat === 'resist' || a.stat === 'elementDmg') {
+    if (a.element === 'all') return true
+    return !!a.element && (ELEMENTS as readonly string[]).includes(a.element)
+  }
+  if (a.stat === 'poisonAmp') return true
+  return isFlatAffixStat(a.stat)
 }
 
 function pickTier(rng: () => number): AffixTier {
@@ -50,5 +110,5 @@ export function rollAffix(rng: () => number = Math.random): AffixDef {
   const tier = pickTier(rng)
   const pool = AFFIXES.filter(a => a.tier === tier)
   const list = pool.length > 0 ? pool : AFFIXES.filter(a => a.tier === 'common')
-  return list[Math.floor(rng() * list.length)] ?? AFFIXES[0]
+  return list[Math.floor(rng() * list.length)] ?? AFFIXES[0]!
 }

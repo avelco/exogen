@@ -1,6 +1,12 @@
-import { RunState, syncRunStateDerived, type MapSnapshot } from '../domain/progression/RunState'
+import {
+  RunState,
+  ensureHeroResistances,
+  syncRunStateDerived,
+  type MapSnapshot,
+} from '../domain/progression/RunState'
 import { MetaProgression } from '../domain/progression/MetaProgression'
 import { DEFAULT_ACTION_SLOTS } from '../domain/cards/Deck'
+import { normalizeResistances, zeroResistances } from '../domain/combat/Elements'
 
 const PREFIX = 'dnd_save_'
 
@@ -9,7 +15,6 @@ export interface SaveSlot {
   name: string
   timestamp: number
   floor: number
-  characterName: string
 }
 
 function serialize(state: RunState) {
@@ -18,7 +23,6 @@ function serialize(state: RunState) {
     coins: state.coins,
     maxHp: state.maxHp,
     hp: state.hp,
-    characterName: state.characterName,
     seed: state.seed,
     passives: state.passives,
     deckDefs: state.deckDefs,
@@ -32,8 +36,12 @@ function serialize(state: RunState) {
     bonusDmgFlat: state.bonusDmgFlat,
     heroShield: state.heroShield,
     heroPoison: state.heroPoison,
+    heroResistances: state.heroResistances,
+    elementDmgBonus: state.elementDmgBonus,
+    poisonAmp: state.poisonAmp,
+    goldBonusPct: state.goldBonusPct,
     savedAt: Date.now(),
-    version: 6,
+    version: 9,
   }
 }
 
@@ -48,12 +56,10 @@ function deserialize(data: Record<string, unknown>): RunState {
         : 0
   state.maxHp = (data.maxHp as number) ?? 30
   state.hp = (data.hp as number) ?? state.maxHp
-  const loadedName = (data.characterName as string) ?? 'Paladín'
-  state.characterName = loadedName === 'Guerrero' ? 'Paladín' : loadedName
   state.seed = (data.seed as number) ?? 0
   state.passives = (data.passives as string[]) ?? []
 
-  // v6: deckDefs. Legacy v5 dice saves → fall back to meta active deck.
+  // v6+: deckDefs. Legacy v5 dice saves → fall back to meta active deck.
   if (Array.isArray(data.deckDefs) && data.deckDefs.length > 0) {
     state.deckDefs = data.deckDefs.filter((id): id is string => typeof id === 'string')
   } else {
@@ -73,6 +79,31 @@ function deserialize(data: Record<string, unknown>): RunState {
   state.bonusDmgFlat = (data.bonusDmgFlat as number) ?? 0
   state.heroShield = (data.heroShield as number) ?? 0
   state.heroPoison = (data.heroPoison as number) ?? 0
+  // v7: heroResistances; older saves → zeros
+  state.heroResistances =
+    data.heroResistances !== undefined
+      ? normalizeResistances(data.heroResistances)
+      : zeroResistances()
+  // v8: tree combat bonuses
+  state.elementDmgBonus =
+    data.elementDmgBonus !== undefined
+      ? normalizeResistances(data.elementDmgBonus)
+      : zeroResistances()
+  state.poisonAmp =
+    typeof data.poisonAmp === 'number' && Number.isFinite(data.poisonAmp)
+      ? Math.max(0, Math.floor(data.poisonAmp))
+      : 0
+  const goldBonusRaw =
+    typeof data.goldBonusPct === 'number'
+      ? data.goldBonusPct
+      : typeof data.shopDiscountPct === 'number'
+        ? data.shopDiscountPct
+        : 0
+  state.goldBonusPct =
+    typeof goldBonusRaw === 'number' && Number.isFinite(goldBonusRaw)
+      ? Math.max(0, Math.floor(goldBonusRaw))
+      : 0
+  ensureHeroResistances(state)
   syncRunStateDerived(state)
   return state
 }
@@ -101,10 +132,9 @@ export class SaveSystem {
         const data = JSON.parse(localStorage.getItem(k)!)
         slots.push({
           key: k.slice(PREFIX.length),
-          name: data.characterName ?? '?',
+          name: `P${data.floor ?? 1}`,
           timestamp: data.savedAt ?? 0,
           floor: data.floor ?? 1,
-          characterName: data.characterName ?? '?',
         })
       } catch {
         // skip corrupted entries

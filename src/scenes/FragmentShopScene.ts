@@ -7,7 +7,7 @@ import { bindSceneKeys } from '../systems/bindSceneKeys'
 import { AudioSystem } from '../systems/AudioSystem'
 import { MetaProgression } from '../domain/progression/MetaProgression'
 import { GEAR_SLOTS, type GearSlot } from '../domain/items/Item'
-import { advanceFloorAfterBoss } from './MapScene'
+import { advanceFloorAfterBoss } from '../domain/progression/advanceDepth'
 import { slotLabel, t } from '../i18n/I18n'
 import type { RunState } from '../domain/progression/RunState'
 
@@ -153,15 +153,11 @@ export class FragmentShopScene extends Phaser.Scene {
     this.locked = true
     AudioSystem.play('select')
 
-    const result = advanceFloorAfterBoss(this.state)
-    if (result === 'victory') {
-      SaveSystem.save('quicksave', this.state)
-      this.scene.start('GameOverScene', { runState: this.state, victory: true })
-      return
-    }
-
-    this.state.pendingNodeKind = null
+    advanceFloorAfterBoss(this.state)
     SaveSystem.save('quicksave', this.state)
-    this.scene.start('MapScene', { runState: this.state })
+    this.scene.start('GameOverScene', {
+      runState: this.state,
+      victory: true,
+    })
   }
 }

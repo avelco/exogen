@@ -1,8 +1,11 @@
+import { tKey } from '../../i18n/I18n'
+
 export type Rarity = 'common' | 'rare' | 'legendary'
 
-export type GearStat = 'maxHp' | 'defFlat' | 'dmgFlat' | 'startGold'
-export type RuneStat = 'diceAtk' | 'rerollAtk' | 'dmgFlat'
-export type ModStat = GearStat | RuneStat
+/** All item mods use card-era stats (no dice leftovers). */
+export type ModStat = 'maxHp' | 'defFlat' | 'dmgFlat' | 'startGold'
+export type GearStat = ModStat
+export type RuneStat = ModStat
 
 export interface StatMod {
   stat: ModStat
@@ -23,7 +26,7 @@ export const GEAR_SLOT_LABELS: Record<GearSlot, string> = {
 
 export const GEAR_SLOT_ROLES: Record<GearSlot, string> = {
   hat: 'Vida',
-  cape: 'Defensa',
+  cape: 'Escudo',
   belt: 'Vida',
   ring: 'Daño',
   boots: 'Almas iniciales',
@@ -49,15 +52,11 @@ export function formatMod(mod: StatMod): string {
     case 'maxHp':
       return `${sign}${mod.value} HP`
     case 'defFlat':
-      return `${sign}${mod.value} DEF`
+      return `${sign}${mod.value} ESC`
     case 'dmgFlat':
       return `${sign}${mod.value} DMG`
     case 'startGold':
-      return `${sign}${mod.value}a`
-    case 'diceAtk':
-      return `${sign}${mod.value} dado`
-    case 'rerollAtk':
-      return `${sign}${mod.value} reroll`
+      return `${sign}${mod.value}${tKey('ui.lootAbbr', 'b')}`
     default:
       return `${sign}${mod.value}`
   }

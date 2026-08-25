@@ -34,10 +34,7 @@ const EVENTS: {
       {
         labelKey: 'event.merchant.buy',
         apply: (rs: RunState) => {
-          if (rs.coins >= 20) {
-            rs.coins -= 20
-            rs.bonusDmgFlat += 1
-          }
+          rs.bonusDmgFlat += 1
         },
       },
       {

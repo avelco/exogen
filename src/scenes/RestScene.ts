@@ -4,6 +4,7 @@ import { SaveSystem } from '../systems/SaveSystem'
 import { addPixelText } from '../ui/pixelText'
 import { markCurrentNodeCleared } from './MapScene'
 import { t } from '../i18n/I18n'
+import type { RunState } from '../domain/progression/RunState'
 
 export class RestScene extends Phaser.Scene {
   private locked = false
@@ -27,11 +28,19 @@ export class RestScene extends Phaser.Scene {
       fontSize: '12px', color: '#66cccc', fontStyle: 'bold',
     }).setOrigin(0.5)
 
+    const healAmt = Math.floor(rs.maxHp * 0.35)
     const choices = [
       {
-        label: t('rest.sleep', { n: Math.floor(rs.maxHp * 0.4) }),
+        label: t('rest.sleep', { n: healAmt }),
         apply: () => {
-          rs.hp = Math.min(rs.maxHp, rs.hp + Math.floor(rs.maxHp * 0.4))
+          rs.hp = Math.min(rs.maxHp, rs.hp + healAmt)
+        },
+      },
+      {
+        label: t('rest.guard'),
+        apply: () => {
+          rs.bonusDefFlat += 1
+          rs.heroShield += 1
         },
       },
       {
@@ -50,7 +59,7 @@ export class RestScene extends Phaser.Scene {
     })
   }
 
-  private pick(rs: import('../domain/progression/RunState').RunState, apply: () => void) {
+  private pick(rs: RunState, apply: () => void) {
     if (this.locked) return
     this.locked = true
     apply()

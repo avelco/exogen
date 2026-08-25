@@ -1,42 +1,219 @@
 [
   {
     "id": "slime",
-    "name": "Slime",
-    "roles": ["combat"],
+    "name": "Engendro viscoso",
+    "roles": [
+      "combat"
+    ],
+    "minFloor": 1,
     "baseHp": 10,
     "baseDef": 1,
-    "skill": "split"
+    "skill": "split",
+    "resistances": {
+      "earth": 5,
+      "fire": 0,
+      "air": 0,
+      "water": 15,
+      "neutral": 5
+    }
   },
   {
     "id": "skeleton",
-    "name": "Esqueleto",
-    "roles": ["combat"],
+    "name": "Operario oxidado",
+    "roles": [
+      "combat"
+    ],
+    "minFloor": 1,
     "baseHp": 12,
     "baseDef": 2,
-    "skill": "bone_toss"
+    "skill": "bone_toss",
+    "resistances": {
+      "earth": 10,
+      "fire": 5,
+      "air": 0,
+      "water": 0,
+      "neutral": 5
+    }
   },
   {
     "id": "bandit",
-    "name": "Bandido",
-    "roles": ["elite"],
+    "name": "Gobelin saqueador",
+    "roles": [
+      "elite"
+    ],
+    "minFloor": 1,
     "baseHp": 16,
     "baseDef": 3,
-    "skill": "steal"
+    "skill": "steal",
+    "resistances": {
+      "earth": 0,
+      "fire": 5,
+      "air": 10,
+      "water": 0,
+      "neutral": 5
+    }
   },
   {
     "id": "spectre",
-    "name": "Espectro",
-    "roles": ["elite"],
+    "name": "Imitador",
+    "roles": [
+      "elite"
+    ],
+    "minFloor": 1,
     "baseHp": 14,
     "baseDef": 2,
-    "skill": "phase"
+    "skill": "phase",
+    "resistances": {
+      "earth": 0,
+      "fire": 0,
+      "air": 15,
+      "water": 5,
+      "neutral": 5
+    }
   },
   {
     "id": "golem",
-    "name": "Golem",
-    "roles": ["boss"],
+    "name": "Guardián de la Costura",
+    "roles": [
+      "boss"
+    ],
+    "minFloor": 1,
     "baseHp": 28,
     "baseDef": 5,
-    "skill": "slam"
+    "skill": "slam",
+    "resistances": {
+      "earth": 15,
+      "fire": 10,
+      "air": 0,
+      "water": 5,
+      "neutral": 5
+    }
+  },
+  {
+    "id": "rust_cultist",
+    "name": "Insito de Terra Secunda",
+    "roles": [
+      "combat"
+    ],
+    "minFloor": 40,
+    "baseHp": 13,
+    "baseDef": 2,
+    "skill": "bone_toss",
+    "resistances": {
+      "earth": 10,
+      "fire": 0,
+      "air": 5,
+      "water": 0,
+      "neutral": 10
+    }
+  },
+  {
+    "id": "ferro_husk",
+    "name": "Cadavera Acta ferrada",
+    "roles": [
+      "combat"
+    ],
+    "minFloor": 100,
+    "baseHp": 14,
+    "baseDef": 4,
+    "skill": "slam",
+    "resistances": {
+      "earth": 10,
+      "fire": 10,
+      "air": 0,
+      "water": 5,
+      "neutral": 15
+    }
+  },
+  {
+    "id": "susurri_monk",
+    "name": "Campanario exaltado",
+    "roles": [
+      "elite"
+    ],
+    "minFloor": 100,
+    "baseHp": 15,
+    "baseDef": 3,
+    "skill": "phase",
+    "resistances": {
+      "earth": 0,
+      "fire": 5,
+      "air": 15,
+      "water": 10,
+      "neutral": 5
+    }
+  },
+  {
+    "id": "alpha_reaver",
+    "name": "Orco alfa",
+    "roles": [
+      "elite"
+    ],
+    "minFloor": 100,
+    "baseHp": 18,
+    "baseDef": 4,
+    "skill": "steal",
+    "resistances": {
+      "earth": 5,
+      "fire": 10,
+      "air": 10,
+      "water": 0,
+      "neutral": 10
+    }
+  },
+  {
+    "id": "gate_keeper",
+    "name": "Guardián del Estrato",
+    "roles": [
+      "boss"
+    ],
+    "minFloor": 100,
+    "baseHp": 30,
+    "baseDef": 6,
+    "skill": "slam",
+    "resistances": {
+      "earth": 15,
+      "fire": 10,
+      "air": 5,
+      "water": 10,
+      "neutral": 10
+    }
+  },
+  {
+    "id": "echo_twin",
+    "name": "Imitador gemelo",
+    "roles": [
+      "combat",
+      "elite"
+    ],
+    "minFloor": 300,
+    "baseHp": 16,
+    "baseDef": 3,
+    "skill": "echo",
+    "resistances": {
+      "earth": 5,
+      "fire": 5,
+      "air": 15,
+      "water": 10,
+      "neutral": 10
+    }
+  },
+  {
+    "id": "void_warden",
+    "name": "Guardián del Núcleo",
+    "roles": [
+      "boss"
+    ],
+    "minFloor": 300,
+    "baseHp": 32,
+    "baseDef": 7,
+    "skill": "echo",
+    "resistances": {
+      "earth": 10,
+      "fire": 10,
+      "air": 10,
+      "water": 10,
+      "neutral": 15
+    }
   }
 ]

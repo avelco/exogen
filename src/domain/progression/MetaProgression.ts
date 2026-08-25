@@ -11,11 +11,17 @@ import {
 } from '../items/Affixes'
 import { setLocale, type Locale } from '../../i18n/I18n'
 import {
+  applyTreeEffectsToRun,
   canUnlock as skillTreeCanUnlock,
   skillTreeNode,
-  unlockedPassiveIds,
 } from './SkillTree'
-import { cardDef } from '../cards/Card'
+import { MAX_CAMPAIGN_FLOOR } from '../map/MazeGenerator'
+import {
+  cardDef,
+  formatCardRef,
+  parseCardRef,
+  MIN_CARD_LEVEL,
+} from '../cards/Card'
 import {
   DEFAULT_ACTION_SLOTS,
   MAX_ACTION_SLOTS,
@@ -43,7 +49,7 @@ export interface MetaLoadout {
 export interface MetaSave {
   /** Global game currency (oro). Persists between runs. */
   gold: number
-  /** Next floor to start when descending (1–5). */
+  /** Next depth to start when descending (1–100). */
   campaignFloor: number
   inventory: MetaInventory
   loadout: MetaLoadout
@@ -64,9 +70,9 @@ export interface MetaSave {
   tutorialDone: boolean
   /** First-account starter packs opened once. */
   starterPacksOpened: boolean
-  /** All card def ids obtained (duplicates allowed). */
-  cardCollection: string[]
-  /** Active deck between runs (def ids, length DECK_SIZE). */
+  /** Card refs → count. Ref is "defId" or "defId@level". */
+  cardCollection: Record<string, number>
+  /** Active deck between runs (card refs, length DECK_SIZE). */
   activeDeck: string[]
   /** Combat action slots (2–3). */
   actionSlots: number
@@ -95,7 +101,7 @@ function normalizeDepthCleared(raw: unknown): number[] {
   for (const v of raw) {
     if (typeof v !== 'number') continue
     const n = Math.floor(v)
-    if (n >= 1 && n <= 5 && !out.includes(n)) out.push(n)
+    if (n >= 1 && n <= MAX_CAMPAIGN_FLOOR && !out.includes(n)) out.push(n)
   }
   return out.sort((a, b) => a - b)
 }
@@ -109,6 +115,25 @@ function normalizeTreeNodes(raw: unknown): string[] {
     }
   }
   return out
+}
+
+/** If old tree ids were dropped, refund spendable points (keep slot purchases). */
+function migrateOrphanTreeUnlocks(
+  rawNodes: unknown,
+  unlocked: string[],
+  skillPointsEarned: number,
+  actionSlots: number,
+): { unlocked: string[]; skillPoints: number; migrated: boolean } {
+  const rawList = Array.isArray(rawNodes)
+    ? rawNodes.filter((id): id is string => typeof id === 'string')
+    : []
+  const hadOrphans = rawList.some(id => !skillTreeNode(id))
+  if (!hadOrphans) {
+    return { unlocked, skillPoints: -1, migrated: false }
+  }
+  const slotsBought = Math.max(0, actionSlots - DEFAULT_ACTION_SLOTS)
+  const skillPoints = Math.max(0, skillPointsEarned - slotsBought)
+  return { unlocked: [], skillPoints, migrated: true }
 }
 
 function emptyFragments(): Record<GearSlot, number> {
@@ -151,20 +176,63 @@ function normalizeGearForge(raw: unknown): Record<string, GearForgeState> {
   return out
 }
 
-function normalizeCardIds(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return []
-  return raw.filter((id): id is string => typeof id === 'string' && !!cardDef(id))
+function addCollectionCount(
+  out: Record<string, number>,
+  ref: string,
+  n = 1,
+) {
+  if (!parseCardRef(ref) || n <= 0) return
+  out[ref] = (out[ref] ?? 0) + Math.floor(n)
 }
 
-function normalizeActiveDeck(raw: unknown, collection: string[]): string[] {
-  const ids = normalizeCardIds(raw)
+/** Migrate legacy string[] or accept Record<ref, count>. */
+function normalizeCardCollection(raw: unknown): Record<string, number> {
+  const out: Record<string, number> = {}
+  if (Array.isArray(raw)) {
+    for (const id of raw) {
+      if (typeof id === 'string') addCollectionCount(out, id, 1)
+    }
+    return out
+  }
+  if (raw && typeof raw === 'object') {
+    for (const [ref, n] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof n === 'number' && Number.isFinite(n)) {
+        addCollectionCount(out, ref, n)
+      }
+    }
+  }
+  return out
+}
+
+function collectionEntries(collection: Record<string, number>): string[] {
+  const out: string[] = []
+  for (const [ref, n] of Object.entries(collection)) {
+    for (let i = 0; i < n; i++) out.push(ref)
+  }
+  return out
+}
+
+function normalizeActiveDeck(
+  raw: unknown,
+  collection: Record<string, number>,
+): string[] {
+  const ids: string[] = []
+  if (Array.isArray(raw)) {
+    for (const id of raw) {
+      if (typeof id === 'string' && parseCardRef(id)) ids.push(id)
+    }
+  }
   if (ids.length >= DECK_SIZE) return ids.slice(0, DECK_SIZE)
   const deck = [...ids]
-  for (const id of collection) {
-    if (deck.length >= DECK_SIZE) break
-    deck.push(id)
+  const used = new Map<string, number>()
+  for (const id of deck) used.set(id, (used.get(id) ?? 0) + 1)
+  for (const [ref, owned] of Object.entries(collection)) {
+    while (deck.length < DECK_SIZE && (used.get(ref) ?? 0) < owned) {
+      deck.push(ref)
+      used.set(ref, (used.get(ref) ?? 0) + 1)
+    }
   }
-  while (deck.length < DECK_SIZE) deck.push('strike')
+  while (deck.length < DECK_SIZE) deck.push(formatCardRef('strike', MIN_CARD_LEVEL))
   return deck.slice(0, DECK_SIZE)
 }
 
@@ -186,7 +254,7 @@ function defaultMeta(): MetaSave {
     gearForge: {},
     tutorialDone: false,
     starterPacksOpened: false,
-    cardCollection: [],
+    cardCollection: {},
     activeDeck: Array.from({ length: DECK_SIZE }, () => 'strike'),
     actionSlots: DEFAULT_ACTION_SLOTS,
   }
@@ -194,7 +262,7 @@ function defaultMeta(): MetaSave {
 
 function normalizeCampaignFloor(raw: unknown): number {
   const n = typeof raw === 'number' ? Math.floor(raw) : 1
-  return Math.min(5, Math.max(1, n))
+  return Math.min(MAX_CAMPAIGN_FLOOR, Math.max(1, n))
 }
 
 function normalizeLocale(raw: unknown): Locale {
@@ -261,22 +329,40 @@ export class MetaProgression {
         gear: normalizeGearLoadout(data.loadout?.gear),
         runes: normalizeRuneLoadout(data.loadout?.runes),
       }
-      const collection = normalizeCardIds(data.cardCollection)
+      const collection = normalizeCardCollection(data.cardCollection)
       const slotsRaw =
         typeof data.actionSlots === 'number' ? Math.floor(data.actionSlots) : DEFAULT_ACTION_SLOTS
+      const actionSlots = Math.min(
+        MAX_ACTION_SLOTS,
+        Math.max(DEFAULT_ACTION_SLOTS, slotsRaw),
+      )
+      const skillPointsEarned =
+        typeof data.skillPointsEarned === 'number'
+          ? Math.max(0, data.skillPointsEarned)
+          : 0
+      let unlockedTreeNodes = normalizeTreeNodes(data.unlockedTreeNodes)
+      let skillPoints =
+        typeof data.skillPoints === 'number' ? Math.max(0, data.skillPoints) : 0
+      const migrate = migrateOrphanTreeUnlocks(
+        data.unlockedTreeNodes,
+        unlockedTreeNodes,
+        skillPointsEarned,
+        actionSlots,
+      )
+      if (migrate.migrated) {
+        unlockedTreeNodes = migrate.unlocked
+        skillPoints = migrate.skillPoints
+      }
       const meta: MetaSave = {
         gold: typeof data.gold === 'number' ? data.gold : 0,
         campaignFloor: normalizeCampaignFloor(data.campaignFloor),
         inventory: normalizeInventory(data.inventory, loadout),
         loadout,
         locale: normalizeLocale(data.locale),
-        skillPoints: typeof data.skillPoints === 'number' ? Math.max(0, data.skillPoints) : 0,
-        skillPointsEarned:
-          typeof data.skillPointsEarned === 'number'
-            ? Math.max(0, data.skillPointsEarned)
-            : 0,
+        skillPoints,
+        skillPointsEarned,
         depthCleared: normalizeDepthCleared(data.depthCleared),
-        unlockedTreeNodes: normalizeTreeNodes(data.unlockedTreeNodes),
+        unlockedTreeNodes,
         fragments: normalizeFragments(data.fragments),
         gearForge: normalizeGearForge(data.gearForge),
         // Existing saves without the field are treated as already onboarded.
@@ -287,9 +373,10 @@ export class MetaProgression {
           (data.starterPacksOpened === undefined && data.tutorialDone !== false),
         cardCollection: collection,
         activeDeck: normalizeActiveDeck(data.activeDeck, collection),
-        actionSlots: Math.min(MAX_ACTION_SLOTS, Math.max(DEFAULT_ACTION_SLOTS, slotsRaw)),
+        actionSlots,
       }
       setLocale(meta.locale)
+      if (migrate.migrated) MetaProgression.save(meta)
       return meta
     } catch {
       const meta = defaultMeta()
@@ -304,15 +391,13 @@ export class MetaProgression {
 
   static applyStartBonuses(state: import('./RunState').RunState) {
     const meta = MetaProgression.load()
-    for (const pid of unlockedPassiveIds(meta)) {
-      if (!state.passives.includes(pid)) state.passives.push(pid)
-    }
+    applyTreeEffectsToRun(meta, state)
   }
 
-  /** First-time boss clear of floor F grants 1 skill point. */
+  /** First-time boss clear of depth F grants 1 skill point. */
   static grantDepthPoint(clearedFloor: number): boolean {
     const f = Math.floor(clearedFloor)
-    if (f < 1 || f > 5) return false
+    if (f < 1 || f > MAX_CAMPAIGN_FLOOR) return false
     const meta = MetaProgression.load()
     if (meta.depthCleared.includes(f)) return false
     meta.depthCleared.push(f)
@@ -357,16 +442,12 @@ export class MetaProgression {
     return MetaProgression.load().gold
   }
 
-  /** Unlock next floor after clearing `clearedFloor` (boss beaten). */
+  /** Unlock next depth after clearing `clearedFloor` (boss beaten). Caps at max. */
   static unlockFloorAfterClear(clearedFloor: number) {
     MetaProgression.grantDepthPoint(clearedFloor)
     const meta = MetaProgression.load()
-    const next = clearedFloor + 1
-    if (next > 5) {
-      meta.campaignFloor = 1
-    } else {
-      meta.campaignFloor = Math.max(meta.campaignFloor, next)
-    }
+    const next = Math.min(MAX_CAMPAIGN_FLOOR, clearedFloor + 1)
+    meta.campaignFloor = Math.max(meta.campaignFloor, next)
     MetaProgression.save(meta)
   }
 
@@ -543,8 +624,13 @@ export class MetaProgression {
     return MetaProgression.load().starterPacksOpened
   }
 
+  /** Flat list of owned card refs (one entry per copy). */
   static getCardCollection(): string[] {
-    return [...MetaProgression.load().cardCollection]
+    return collectionEntries(MetaProgression.load().cardCollection)
+  }
+
+  static getCardCollectionMap(): Record<string, number> {
+    return { ...MetaProgression.load().cardCollection }
   }
 
   static getActiveDeck(): string[] {
@@ -555,11 +641,21 @@ export class MetaProgression {
     return MetaProgression.load().actionSlots
   }
 
-  static addCardsToCollection(defIds: string[]) {
+  /** Add pack/store cards as level-1 refs (or pass full refs). */
+  static addCardsToCollection(refs: string[]) {
     const meta = MetaProgression.load()
-    for (const id of defIds) {
-      if (cardDef(id)) meta.cardCollection.push(id)
+    for (const raw of refs) {
+      const parsed = parseCardRef(raw) ?? (cardDef(raw) ? { defId: raw, level: MIN_CARD_LEVEL } : null)
+      if (!parsed) continue
+      const ref = formatCardRef(parsed.defId, parsed.level)
+      addCollectionCount(meta.cardCollection, ref, 1)
     }
+    MetaProgression.save(meta)
+  }
+
+  static setCardCollection(collection: Record<string, number>) {
+    const meta = MetaProgression.load()
+    meta.cardCollection = normalizeCardCollection(collection)
     MetaProgression.save(meta)
   }
 
@@ -569,17 +665,14 @@ export class MetaProgression {
     MetaProgression.save(meta)
   }
 
-  static setActiveDeck(defIds: string[]): boolean {
-    const ids = defIds.filter(id => !!cardDef(id))
+  static setActiveDeck(refs: string[]): boolean {
+    const ids = refs.filter(id => !!parseCardRef(id))
     if (ids.length !== DECK_SIZE) return false
     const meta = MetaProgression.load()
-    // Validate multiplicity against collection
     const need = new Map<string, number>()
     for (const id of ids) need.set(id, (need.get(id) ?? 0) + 1)
-    const have = new Map<string, number>()
-    for (const id of meta.cardCollection) have.set(id, (have.get(id) ?? 0) + 1)
     for (const [id, n] of need) {
-      if ((have.get(id) ?? 0) < n) return false
+      if ((meta.cardCollection[id] ?? 0) < n) return false
     }
     meta.activeDeck = ids
     MetaProgression.save(meta)
@@ -600,16 +693,27 @@ export class MetaProgression {
   /** After opening starter packs: set collection + active deck. */
   static commitStarterPacks(defIds: string[], signatureIds: string[] = []) {
     const meta = MetaProgression.load()
-    meta.cardCollection = defIds.filter(id => !!cardDef(id))
-    const deck: string[] = []
-    for (const id of signatureIds) {
-      if (meta.cardCollection.includes(id) && deck.length < DECK_SIZE) deck.push(id)
+    const collection: Record<string, number> = {}
+    for (const id of defIds) {
+      if (!cardDef(id)) continue
+      const ref = formatCardRef(id, MIN_CARD_LEVEL)
+      addCollectionCount(collection, ref, 1)
     }
-    for (const id of meta.cardCollection) {
-      if (deck.length >= DECK_SIZE) break
-      const used = deck.filter(x => x === id).length
-      const owned = meta.cardCollection.filter(x => x === id).length
-      if (used < owned) deck.push(id)
+    meta.cardCollection = collection
+    const deck: string[] = []
+    const used = new Map<string, number>()
+    for (const id of signatureIds) {
+      const ref = formatCardRef(id, MIN_CARD_LEVEL)
+      if ((collection[ref] ?? 0) > (used.get(ref) ?? 0) && deck.length < DECK_SIZE) {
+        deck.push(ref)
+        used.set(ref, (used.get(ref) ?? 0) + 1)
+      }
+    }
+    for (const [ref, owned] of Object.entries(collection)) {
+      while (deck.length < DECK_SIZE && (used.get(ref) ?? 0) < owned) {
+        deck.push(ref)
+        used.set(ref, (used.get(ref) ?? 0) + 1)
+      }
     }
     while (deck.length < DECK_SIZE) deck.push('strike')
     meta.activeDeck = deck.slice(0, DECK_SIZE)

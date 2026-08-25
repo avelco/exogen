@@ -2,7 +2,6 @@ import Phaser from 'phaser'
 import { BootScene } from './scenes/BootScene'
 import { PreloadScene } from './scenes/PreloadScene'
 import { MenuScene } from './scenes/MenuScene'
-import { CharacterSelectScene } from './scenes/CharacterSelectScene'
 import { MapScene } from './scenes/MapScene'
 import { CombatScene } from './scenes/CombatScene'
 import { RewardScene } from './scenes/RewardScene'
@@ -17,6 +16,9 @@ import { FragmentShopScene } from './scenes/FragmentShopScene'
 import { OptionsScene } from './scenes/OptionsScene'
 import { PackOpenScene } from './scenes/PackOpenScene'
 import { DeckScene } from './scenes/DeckScene'
+import { StoreScene } from './scenes/StoreScene'
+import { AscensionScene } from './scenes/AscensionScene'
+import { LoreScene } from './scenes/LoreScene'
 import { createDebugState } from './debug'
 import { SaveSystem } from './systems/SaveSystem'
 import type { RunState } from './domain/progression/RunState'
@@ -50,7 +52,6 @@ const game = new Phaser.Game({
     BootScene,
     PreloadScene,
     MenuScene,
-    CharacterSelectScene,
     MapScene,
     CombatScene,
     RewardScene,
@@ -65,6 +66,9 @@ const game = new Phaser.Game({
     OptionsScene,
     PackOpenScene,
     DeckScene,
+    StoreScene,
+    AscensionScene,
+    LoreScene,
   ],
   scale: {
     mode: Phaser.Scale.FIT,
@@ -90,7 +94,7 @@ const SHORTCUTS: ReadonlyArray<readonly [string, string, number]> = [
   ['5', 'EventScene', 5],
   ['6', 'ForgeScene', 5],
   ['7', 'GameOverScene', 5],
-  ['8', 'CharacterSelectScene', 5],
+  ['8', 'DeckScene', 5],
 ]
 
 window.addEventListener('keydown', (e: KeyboardEvent) => {

@@ -1,13 +1,8 @@
 import { createNewRun } from '../src/domain/progression/RunState'
-import {
-  applyCharacterKit,
-  characterByName,
-} from '../src/domain/progression/Characters'
 
-export function makeState(characterName: string, seed = 1) {
-  const kit = characterByName(characterName)
-  if (!kit) throw new Error(`Unknown character: ${characterName}`)
-  const state = createNewRun(characterName, seed)
-  applyCharacterKit(state, kit)
+export function makeState(seed = 1) {
+  const state = createNewRun(seed)
+  state.maxHp = 30
+  state.hp = 30
   return state
 }

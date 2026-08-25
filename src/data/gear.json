@@ -1,72 +1,182 @@
 [
   {
     "id": "hat_cloth",
-    "name": "Gorro de tela",
+    "name": "Capucha remendada",
     "slot": "hat",
     "rarity": "common",
-    "mods": [{ "stat": "maxHp", "value": 3 }]
+    "mods": [
+      {
+        "stat": "maxHp",
+        "value": 3
+      }
+    ]
   },
   {
     "id": "hat_iron",
-    "name": "Casco de hierro",
+    "name": "Casco cornudo",
     "slot": "hat",
     "rarity": "rare",
-    "mods": [{ "stat": "maxHp", "value": 6 }]
+    "mods": [
+      {
+        "stat": "maxHp",
+        "value": 6
+      }
+    ]
+  },
+  {
+    "id": "hat_crown",
+    "name": "Tiara Primi",
+    "slot": "hat",
+    "rarity": "legendary",
+    "mods": [
+      {
+        "stat": "maxHp",
+        "value": 10
+      }
+    ]
   },
   {
     "id": "cape_rag",
-    "name": "Capa raída",
+    "name": "Harapos de refugiado",
     "slot": "cape",
     "rarity": "common",
-    "mods": [{ "stat": "defFlat", "value": 1 }]
+    "mods": [
+      {
+        "stat": "defFlat",
+        "value": 1
+      }
+    ]
   },
   {
     "id": "cape_guard",
-    "name": "Capa de guardia",
+    "name": "Capa de custodio",
     "slot": "cape",
     "rarity": "rare",
-    "mods": [{ "stat": "defFlat", "value": 3 }]
+    "mods": [
+      {
+        "stat": "defFlat",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "id": "cape_void",
+    "name": "Manto de la Fosa",
+    "slot": "cape",
+    "rarity": "legendary",
+    "mods": [
+      {
+        "stat": "defFlat",
+        "value": 5
+      }
+    ]
   },
   {
     "id": "belt_rope",
     "name": "Cinturón de cuerda",
     "slot": "belt",
     "rarity": "common",
-    "mods": [{ "stat": "maxHp", "value": 2 }]
+    "mods": [
+      {
+        "stat": "maxHp",
+        "value": 2
+      }
+    ]
   },
   {
     "id": "belt_plated",
-    "name": "Cinturón plateado",
+    "name": "Cinturón blindado",
     "slot": "belt",
     "rarity": "rare",
-    "mods": [{ "stat": "maxHp", "value": 5 }]
+    "mods": [
+      {
+        "stat": "maxHp",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "belt_orichalcum",
+    "name": "Cinturón de aleación Primi",
+    "slot": "belt",
+    "rarity": "legendary",
+    "mods": [
+      {
+        "stat": "maxHp",
+        "value": 9
+      }
+    ]
   },
   {
     "id": "ring_copper",
-    "name": "Anillo de cobre",
+    "name": "Anillo conductor",
     "slot": "ring",
     "rarity": "common",
-    "mods": [{ "stat": "dmgFlat", "value": 1 }]
+    "mods": [
+      {
+        "stat": "dmgFlat",
+        "value": 1
+      }
+    ]
   },
   {
     "id": "ring_ruby",
-    "name": "Anillo rubí",
+    "name": "Anillo del Venator",
     "slot": "ring",
     "rarity": "rare",
-    "mods": [{ "stat": "dmgFlat", "value": 2 }]
+    "mods": [
+      {
+        "stat": "dmgFlat",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "id": "ring_eclipse",
+    "name": "Anillo eclipse",
+    "slot": "ring",
+    "rarity": "legendary",
+    "mods": [
+      {
+        "stat": "dmgFlat",
+        "value": 4
+      }
+    ]
   },
   {
     "id": "boots_worn",
-    "name": "Botas gastadas",
+    "name": "Botas remendadas",
     "slot": "boots",
     "rarity": "common",
-    "mods": [{ "stat": "startGold", "value": 5 }]
+    "mods": [
+      {
+        "stat": "startGold",
+        "value": 5
+      }
+    ]
   },
   {
     "id": "boots_merchant",
-    "name": "Botas de mercader",
+    "name": "Botas de Sereia",
     "slot": "boots",
     "rarity": "rare",
-    "mods": [{ "stat": "startGold", "value": 15 }]
+    "mods": [
+      {
+        "stat": "startGold",
+        "value": 15
+      }
+    ]
+  },
+  {
+    "id": "boots_courier",
+    "name": "Botas de correo Vulpini",
+    "slot": "boots",
+    "rarity": "legendary",
+    "mods": [
+      {
+        "stat": "startGold",
+        "value": 30
+      }
+    ]
   }
 ]

@@ -2,7 +2,7 @@ import recipesData from '../../data/dungeonRecipes.json'
 import type { MapNodeKind } from './NodeTypes'
 import type { MapEdgeSnapshot, MapNodeSnapshot, MapSnapshot } from '../progression/RunState'
 
-export const MAX_CAMPAIGN_FLOOR = 5
+export const MAX_CAMPAIGN_FLOOR = 400
 
 const PAD_X = 28
 const PAD_Y = 36
@@ -20,6 +20,24 @@ export interface DungeonRecipe {
 }
 
 const RECIPES = (recipesData as { floors: DungeonRecipe[] }).floors
+
+/** Soft growth for depths beyond the authored recipes (6–100). */
+function recipeForHighFloor(floor: number): DungeonRecipe {
+  const t = floor - 5
+  return {
+    floor,
+    gridW: Math.min(8, 6 + Math.floor(t / 20)),
+    gridH: Math.min(12, 9 + Math.floor(t / 15)),
+    rooms: {
+      combat: Math.min(18, 11 + Math.floor(t / 8)),
+      elite: Math.min(5, 3 + Math.floor(t / 25)),
+      shop: 1,
+      rest: Math.min(3, 2 + Math.floor(t / 40)),
+      event: Math.min(3, 2 + Math.floor(t / 30)),
+    },
+    loops: Math.min(5, 3 + Math.floor(t / 30)),
+  }
+}
 
 type Cell = { gx: number; gy: number }
 
@@ -63,9 +81,10 @@ function roomBag(rooms: DungeonRecipe['rooms']): RoomKind[] {
 }
 
 export function getDungeonRecipe(floor: number): DungeonRecipe {
-  const r = RECIPES.find(x => x.floor === floor)
-  if (!r) throw new Error(`[dungeonRecipes] no recipe for floor ${floor}`)
-  return r
+  const f = Math.max(1, Math.min(MAX_CAMPAIGN_FLOOR, Math.floor(floor)))
+  const r = RECIPES.find(x => x.floor === f)
+  if (r) return r
+  return recipeForHighFloor(f)
 }
 
 function neighbors4(c: Cell, w: number, h: number): Cell[] {

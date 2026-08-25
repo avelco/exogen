@@ -3,13 +3,13 @@ import { RunState, createNewRun, syncRunStateDerived } from './domain/progressio
 import { MetaProgression } from './domain/progression/MetaProgression'
 import { loadDungeonMap } from './domain/map/DungeonMap'
 import { addPixelText } from './ui/pixelText'
-import { applyCharacterKit, characterByName } from './domain/progression/Characters'
 import { applyLoadoutToRun } from './domain/progression/Loadout'
+import { t } from './i18n/I18n'
 
 export function renderDebugHeader(scene: Phaser.Scene, rs: RunState) {
   syncRunStateDerived(rs)
   const gold = MetaProgression.getGold()
-  const header = `P${rs.floor} | ${rs.characterName} | HP ${rs.hp}/${rs.maxHp} | ${rs.coins}a | ${gold}g | S${rs.actionSlots}`
+  const header = `P${rs.floor} | ${t('player.name')} | HP ${rs.hp}/${rs.maxHp} | ${rs.coins}${t('ui.lootAbbr')} | ${gold}g | S${rs.actionSlots}`
   addPixelText(scene, 4, 2, header, {
     fontSize: '8px',
     color: '#88ff88',
@@ -17,13 +17,11 @@ export function renderDebugHeader(scene: Phaser.Scene, rs: RunState) {
 }
 
 export function createDebugState(floor = 5): RunState {
-  const kit = characterByName('Paladín')!
-  const state = createNewRun('Paladín', 42)
-  applyCharacterKit(state, kit)
+  const state = createNewRun(42)
   state.floor = floor
   state.coins = 100 + floor * 30
-  MetaProgression.applyStartBonuses(state)
   applyLoadoutToRun(state)
+  MetaProgression.applyStartBonuses(state)
   state.maxHp = Math.max(state.maxHp, 30 + Math.floor(floor * 3))
   state.hp = state.maxHp
   state.map = loadDungeonMap(state.floor, state.seed)
@@ -62,6 +60,4 @@ export function trySecondWind(state: RunState) {
   }
 }
 
-export function shopDiscount(state: RunState): number {
-  return state.passives.includes('merchant_friend') ? 0.8 : 1
-}
+export { convertSoulsToGold, shopDiscount } from './domain/progression/ShopPricing'

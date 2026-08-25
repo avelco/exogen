@@ -6,6 +6,7 @@ import { t } from '../i18n/I18n'
 import { enableTouchTarget } from '../ui/touchTarget'
 import { AudioSystem } from '../systems/AudioSystem'
 import { SaveSystem } from '../systems/SaveSystem'
+import { convertRunSoulsToGold } from '../domain/progression/advanceDepth'
 
 interface GameOverData {
   runState?: import('../domain/progression/RunState').RunState
@@ -25,18 +26,33 @@ export class GameOverScene extends Phaser.Scene {
     const victory = !!data.victory
 
     if (rs) renderDebugHeader(this, rs)
+
+    let goldGained = 0
+    if (rs) {
+      goldGained = convertRunSoulsToGold(rs, victory)
+    }
     SaveSystem.abandonQuicksave()
 
     if (victory) {
+      const depth = rs?.floor ?? 1
+      const subKey =
+        depth >= 100 ? 'gameover.victoryCampaign' : 'gameover.victorySub'
       addPixelText(this, cx, 48, t('gameover.victory'), {
         fontSize: '14px', color: '#ffcc44', fontStyle: 'bold',
       }).setOrigin(0.5)
-      addPixelText(this, cx, 72, t('gameover.victorySub'), {
+      addPixelText(this, cx, 72, t(subKey, { n: depth }), {
         fontSize: '8px', color: '#aaaaaa',
       }).setOrigin(0.5)
     } else {
       addPixelText(this, cx, 48, t('gameover.defeat'), {
         fontSize: '14px', color: '#ff6666', fontStyle: 'bold',
+      }).setOrigin(0.5)
+    }
+
+    if (goldGained > 0) {
+      addPixelText(this, cx, 96, t('gameover.goldGained', { n: goldGained }), {
+        fontSize: '8px',
+        color: '#ffcc66',
       }).setOrigin(0.5)
     }
 

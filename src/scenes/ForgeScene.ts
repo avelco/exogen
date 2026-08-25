@@ -9,10 +9,10 @@ import { gearDef } from '../domain/items/Equipment'
 import {
   AFFIX_TIER_COLORS,
   FORGE_REROLL_COST,
-  affixAsMod,
   affixDef,
+  formatAffix,
 } from '../domain/items/Affixes'
-import { formatMod, formatMods, RARITY_COLORS } from '../domain/items/Item'
+import { formatMods, RARITY_COLORS } from '../domain/items/Item'
 import { gearName, slotLabel, t } from '../i18n/I18n'
 
 export class ForgeScene extends Phaser.Scene {
@@ -167,7 +167,7 @@ export class ForgeScene extends Phaser.Scene {
       const a = affixDef(forge.appliedAffixId)
       if (a) {
         this.addUi(
-          addPixelText(this, x, y, formatMod(affixAsMod(a)), {
+          addPixelText(this, x, y, formatAffix(a), {
             fontSize: '8px',
             color: AFFIX_TIER_COLORS[a.tier],
           }),
@@ -194,7 +194,7 @@ export class ForgeScene extends Phaser.Scene {
       const a = affixDef(forge.pendingAffixId)
       if (a) {
         this.addUi(
-          addPixelText(this, x, y, formatMod(affixAsMod(a)), {
+          addPixelText(this, x, y, formatAffix(a), {
             fontSize: '8px',
             color: AFFIX_TIER_COLORS[a.tier],
           }),

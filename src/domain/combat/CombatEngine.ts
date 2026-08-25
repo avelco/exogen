@@ -1,13 +1,21 @@
 import {
   previewCards,
+  previewCardsVs,
   resolveCardPlays,
   tickPoison,
+  type CardPlayBonuses,
   type CombatActor,
   type TurnPreview,
 } from '../cards/CardEffects'
 import type { RunCard } from '../cards/Card'
 import type { RunState } from '../progression/RunState'
 import { hasPassive } from '../progression/Passives'
+import { applyElementalDamage } from './DamagePipeline'
+import {
+  zeroResistances,
+  type ElementResistances,
+} from './Elements'
+import type { CardEffectMultiplier } from './CardEffectDie'
 
 export type { CombatActor, TurnPreview }
 
@@ -28,13 +36,33 @@ export function toFighter(
   shield: number,
   poison: number,
   bonusDmgFlat = 0,
+  resistances: ElementResistances = zeroResistances(),
 ): CombatFighter {
-  return { hp, maxHp, shield, poison, bonusDmgFlat }
+  return { hp, maxHp, shield, poison, resistances, bonusDmgFlat }
+}
+
+function bonusesFromState(
+  state: RunState,
+  cardEffectMultiplier: CardEffectMultiplier,
+): CardPlayBonuses {
+  return {
+    elementDmgBonus: state.elementDmgBonus,
+    poisonAmp: state.poisonAmp,
+    cardEffectMultiplier,
+  }
 }
 
 export class CombatEngine {
-  static preview(cards: RunCard[]): TurnPreview {
-    return previewCards(cards)
+  static preview(cards: RunCard[], bonuses?: CardPlayBonuses): TurnPreview {
+    return previewCards(cards, bonuses)
+  }
+
+  static previewVs(
+    cards: RunCard[],
+    targetResistances: ElementResistances,
+    bonuses?: CardPlayBonuses,
+  ): TurnPreview {
+    return previewCardsVs(cards, targetResistances, bonuses)
   }
 
   /**
@@ -47,23 +75,27 @@ export class CombatEngine {
 
   /**
    * Resolve slotted cards. Flat bonus damage from loadout is added once
-   * after card damage if any damage card was played.
+   * after card damage if any damage card was played (neutral element).
    */
   static resolveTurn(
     cards: RunCard[],
     self: CombatFighter,
     target: CombatFighter,
-    opts?: { heavyHit?: boolean },
+    opts?: { heavyHit?: boolean; bonuses?: CardPlayBonuses },
   ): TurnResolveResult {
-    const preview = previewCards(cards)
-    const applied = resolveCardPlays(cards, self, target)
+    const bonuses = opts?.bonuses
+    const preview = previewCardsVs(cards, target.resistances, bonuses)
+    const applied = resolveCardPlays(cards, self, target, bonuses)
 
     if (preview.damage > 0 && self.bonusDmgFlat > 0) {
-      const extra = applyFlat(target, self.bonusDmgFlat)
-      applied.damage += extra
+      applied.damage += applyElementalDamage(
+        target,
+        self.bonusDmgFlat,
+        'neutral',
+      )
     }
     if (preview.damage > 0 && opts?.heavyHit) {
-      applied.damage += applyFlat(target, 2)
+      applied.damage += applyElementalDamage(target, 2, 'neutral')
     }
 
     return {
@@ -79,19 +111,13 @@ export class CombatEngine {
     state: RunState,
     hero: CombatFighter,
     enemy: CombatFighter,
+    cardEffectMultiplier: CardEffectMultiplier = 1,
   ): TurnResolveResult {
     hero.bonusDmgFlat = state.bonusDmgFlat
+    // Caller provides hero.resistances (permanent + combat-only, merged).
     return CombatEngine.resolveTurn(cards, hero, enemy, {
       heavyHit: hasPassive(state, 'heavy_hit'),
+      bonuses: bonusesFromState(state, cardEffectMultiplier),
     })
   }
-}
-
-function applyFlat(target: CombatActor, amount: number): number {
-  if (amount <= 0) return 0
-  const absorbed = Math.min(target.shield, amount)
-  target.shield -= absorbed
-  const hpLoss = amount - absorbed
-  target.hp = Math.max(0, target.hp - hpLoss)
-  return hpLoss
 }

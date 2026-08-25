@@ -4,17 +4,17 @@ import { SaveSystem } from '../systems/SaveSystem'
 import { addPixelText } from '../ui/pixelText'
 import { enableTouchTarget } from '../ui/touchTarget'
 import type { RunState, RewardTier } from '../domain/progression/RunState'
-import { pickRandomPassiveIds } from '../domain/progression/Passives'
 import { MetaProgression } from '../domain/progression/MetaProgression'
 import { GEAR, gearDef, type GearDef } from '../domain/items/Equipment'
 import { RARITY_COLORS } from '../domain/items/Item'
 import { gearForgeTooltipLines } from '../domain/items/forgeTooltip'
 import { markCurrentNodeCleared } from './MapScene'
+import { advanceFloorAfterBoss } from '../domain/progression/advanceDepth'
 import { AudioSystem } from '../systems/AudioSystem'
 import { bindSceneKeys } from '../systems/bindSceneKeys'
-import { gearName, passiveName, t } from '../i18n/I18n'
+import { gearName, t } from '../i18n/I18n'
 import { ItemTooltip, gearTooltipContent } from '../ui/ItemTooltip'
-type RewardKind = 'coins' | 'heal' | 'dmg' | 'passive'
+type RewardKind = 'coins' | 'heal' | 'dmg' | 'def' | 'passive'
 
 interface RewardOption {
   kind: RewardKind
@@ -51,39 +51,13 @@ function dupGoldAmount(floor: number, rng: () => number): number {
   return 40 + floor * 8 + Math.floor(rng() * 20)
 }
 
-function buildOptions(state: RunState, tier: RewardTier): RewardOption[] {
-  const rng = mulberry32(state.seed + state.floor * 17 + Date.now() % 1000)
-  const coinBase = tier === 'elite' ? 28 : 15
-  const options: RewardOption[] = [
-    { kind: 'coins', label: t('reward.coins', { n: coinBase + state.floor * 3 }), coins: coinBase + state.floor * 3 },
-    { kind: 'heal', label: t('reward.heal', { n: Math.floor(state.maxHp * 0.3) }), heal: Math.floor(state.maxHp * 0.3) },
+function buildOptions(state: RunState, _tier: RewardTier): RewardOption[] {
+  const healAmt = Math.floor(state.maxHp * 0.35)
+  return [
+    { kind: 'heal', label: t('reward.heal', { n: healAmt }), heal: healAmt },
+    { kind: 'def', label: t('reward.def') },
+    { kind: 'dmg', label: t('reward.dmg') },
   ]
-
-  if (rng() > 0.45) {
-    options.push({ kind: 'dmg', label: t('reward.dmg') })
-  } else {
-    const [pid] = pickRandomPassiveIds(1, state.passives, rng)
-    options.push({
-      kind: 'passive',
-      label: pid ? passiveName(pid) : t('reward.passive'),
-      passiveId: pid,
-    })
-  }
-
-  while (options.length < 3) {
-    const [pid] = pickRandomPassiveIds(1, state.passives, rng)
-    if (!pid) {
-      options.push({
-        kind: 'coins',
-        label: t('reward.coins', { n: Math.floor(coinBase / 2) }),
-        coins: Math.floor(coinBase / 2),
-      })
-      continue
-    }
-    options.push({ kind: 'passive', label: passiveName(pid), passiveId: pid })
-  }
-
-  return options.slice(0, 3)
 }
 
 function pickGearFromPool(pool: GearDef[], rng: () => number): GearDef | undefined {
@@ -298,6 +272,11 @@ export class RewardScene extends Phaser.Scene {
         this.state.bonusDmgFlat += 1
         AudioSystem.play('select')
         break
+      case 'def':
+        this.state.bonusDefFlat += 1
+        this.state.heroShield += 1
+        AudioSystem.play('select')
+        break
       case 'passive':
         if (opt.passiveId && !this.state.passives.includes(opt.passiveId)) {
           this.state.passives.push(opt.passiveId)
@@ -313,8 +292,12 @@ export class RewardScene extends Phaser.Scene {
     markCurrentNodeCleared(this.state)
 
     if (this.state.pendingRewardTier === 'boss') {
+      advanceFloorAfterBoss(this.state)
       SaveSystem.save('quicksave', this.state)
-      this.scene.start('FragmentShopScene', { runState: this.state })
+      this.scene.start('GameOverScene', {
+        runState: this.state,
+        victory: true,
+      })
       return
     }
 

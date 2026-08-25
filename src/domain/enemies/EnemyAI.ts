@@ -1,14 +1,13 @@
-import { effectsOf, sumEffect, type RunCard } from '../cards/Card'
-import type { CombatActor } from '../cards/CardEffects'
-import { previewCards } from '../cards/CardEffects'
-
-export interface EnemyPlayChoice {
-  cardIds: string[]
-}
+import { effectsOf, type RunCard } from '../cards/Card'
+import {
+  effectiveDamageOf,
+  type CombatActor,
+} from '../cards/CardEffects'
 
 /**
  * Pick up to `slots` cards from hand.
  * Priority: lethal damage > damage > poison > shield > heal.
+ * Damage scoring uses target resistances.
  */
 export class EnemyAI {
   static choosePlays(
@@ -23,9 +22,9 @@ export class EnemyAI {
     const chosen: RunCard[] = []
 
     while (chosen.length < slots && remaining.length > 0) {
-      const dmgSoFar = sumEffect(chosen, 'damage')
+      const dmgSoFar = effectiveDamageOf(chosen, target.resistances)
       const lethal = remaining.find(c => {
-        const d = sumEffect([c], 'damage')
+        const d = effectiveDamageOf([c], target.resistances)
         return dmgSoFar + d >= target.hp + target.shield
       })
       if (lethal) {
@@ -34,25 +33,29 @@ export class EnemyAI {
         continue
       }
 
-      remaining.sort((a, b) => scoreCard(b, self) - scoreCard(a, self))
+      remaining.sort(
+        (a, b) =>
+          scoreCard(b, self, target) - scoreCard(a, self, target),
+      )
       const next = remaining.shift()!
       chosen.push(next)
     }
 
     return chosen
   }
-
-  static previewChoice(cards: RunCard[]) {
-    return previewCards(cards)
-  }
 }
 
-function scoreCard(card: RunCard, self: CombatActor): number {
+function scoreCard(
+  card: RunCard,
+  self: CombatActor,
+  target: CombatActor,
+): number {
   let score = 0
   for (const e of effectsOf(card)) {
     switch (e.type) {
       case 'damage':
-        score += e.value * 10
+        score +=
+          effectiveDamageOf([card], target.resistances) * 10
         break
       case 'poison':
         score += e.value * 8
@@ -63,6 +66,12 @@ function scoreCard(card: RunCard, self: CombatActor): number {
       case 'heal':
         score += e.value * (self.hp < self.maxHp * 0.5 ? 7 : 2)
         break
+      case 'resist': {
+        // Combat-only resist: worth ~value% of the damage we expect to take.
+        const expected = Math.max(4, effectiveDamageOf([card], target.resistances) + 6)
+        score += Math.round(e.value * 0.01 * expected) * 5
+        break
+      }
     }
   }
   return score

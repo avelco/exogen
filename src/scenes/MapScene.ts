@@ -7,7 +7,6 @@ import {
   dungeonMapHeight,
   dungeonMapWidth,
   loadDungeonMap,
-  MAX_CAMPAIGN_FLOOR,
 } from '../domain/map/DungeonMap'
 import { nodesAdjacent } from '../domain/map/MazeGenerator'
 import type { MapNodeKind } from '../domain/map/NodeTypes'
@@ -174,7 +173,17 @@ export class MapScene extends Phaser.Scene {
       },
     })
     SaveSystem.save('quicksave', this.runState)
+    this.maybeShowThresholdBanner()
     this.maybeStartTutorial()
+  }
+
+  private maybeShowThresholdBanner() {
+    const threshold = this.runState.pendingThreshold
+    if (!threshold) return
+    this.runState.pendingThreshold = null
+    SaveSystem.save('quicksave', this.runState)
+    const tip = new TutorialBanner(this)
+    tip.show(threshold >= 300 ? 'threshold.phase' : 'threshold.void', () => tip.destroy())
   }
 
   private maybeStartTutorial() {
@@ -451,16 +460,4 @@ export function markCurrentNodeCleared(state: RunState) {
   if (node) node.cleared = true
 }
 
-export function advanceFloorAfterBoss(state: RunState) {
-  const clearedFloor = state.floor
-  MetaProgression.unlockFloorAfterClear(clearedFloor)
-  state.floor += 1
-  state.secondWindUsedThisFloor = false
-  if (state.floor > MAX_CAMPAIGN_FLOOR) {
-    return 'victory'
-  }
-  state.map = loadDungeonMap(state.floor, state.seed)
-  const start = state.map.nodes.find(n => n.kind === 'start')
-  state.currentNodeId = start?.id ?? null
-  return 'continue'
-}
+export { advanceFloorAfterBoss } from '../domain/progression/advanceDepth'

@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { getRunState, getSceneData, renderDebugHeader, shopDiscount } from '../debug'
+import { getRunState, getSceneData, renderDebugHeader } from '../debug'
 import { SaveSystem } from '../systems/SaveSystem'
 import { addPixelText } from '../ui/pixelText'
 import { pickRandomPassiveIds } from '../domain/progression/Passives'
@@ -15,7 +15,6 @@ import { TutorialBanner } from '../ui/TutorialBanner'
 
 interface ShopOffer {
   label: string
-  cost: number
   enabled: boolean
   apply: () => void
 }
@@ -24,6 +23,7 @@ export class ShopScene extends Phaser.Scene {
   private locked = false
   private postCombat = false
   private soulsGained = 0
+  private picked = false
 
   constructor() {
     super('ShopScene')
@@ -31,6 +31,7 @@ export class ShopScene extends Phaser.Scene {
 
   init() {
     this.locked = false
+    this.picked = false
   }
 
   create() {
@@ -44,7 +45,6 @@ export class ShopScene extends Phaser.Scene {
     }
     this.postCombat = !!data.postCombat
     this.soulsGained = data.soulsGained ?? 0
-    const disc = shopDiscount(rs)
 
     renderDebugHeader(this, rs)
 
@@ -61,27 +61,32 @@ export class ShopScene extends Phaser.Scene {
       }).setOrigin(0.5)
     }
 
-    addPixelText(this, cx, this.postCombat && this.soulsGained > 0 ? 60 : 48, t('shop.almas', { n: rs.coins }), {
-      fontSize: '8px',
-      color: '#ffcc66',
-    }).setOrigin(0.5)
+    addPixelText(
+      this,
+      cx,
+      this.postCombat && this.soulsGained > 0 ? 60 : 48,
+      t('shop.pickFree'),
+      {
+        fontSize: '8px',
+        color: '#aaaaaa',
+      },
+    ).setOrigin(0.5)
 
     const offers = this.postCombat
-      ? this.postCombatOffers(rs, disc)
-      : this.mapShopOffers(rs, disc)
+      ? this.standardOffers(rs)
+      : this.mapShopOffers(rs)
 
     offers.forEach((o, i) => {
-      const y = 84 + i * 28
-      const canBuy = o.enabled && rs.coins >= o.cost
+      const y = 96 + i * 32
       const offer = addPixelText(this, cx, y, `[${i + 1}] ${o.label}`, {
         fontSize: '8px',
-        color: canBuy ? '#dddddd' : '#555555',
+        color: o.enabled ? '#dddddd' : '#555555',
         wordWrap: { width: width - 40 },
         align: 'center',
       }).setOrigin(0.5)
-      if (canBuy) {
-        enableTouchTarget(offer, { min: 24 })
-        offer.on('pointerdown', () => this.buy(rs, o.cost, o.apply))
+      if (o.enabled) {
+        enableTouchTarget(offer, { min: 28 })
+        offer.on('pointerdown', () => this.pick(rs, o.apply))
       }
     })
 
@@ -101,7 +106,7 @@ export class ShopScene extends Phaser.Scene {
       if (i >= 9) return
       const key = `keydown-${['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'][i]}`
       keys[key] = () => {
-        if (o.enabled && rs.coins >= o.cost) this.buy(rs, o.cost, o.apply)
+        if (o.enabled) this.pick(rs, o.apply)
       }
     })
     bindSceneKeys(this, keys)
@@ -115,24 +120,19 @@ export class ShopScene extends Phaser.Scene {
     }
   }
 
-  private postCombatOffers(rs: RunState, disc: number): ShopOffer[] {
-    const healCost = Math.floor(18 * disc)
-    const defCost = Math.floor(22 * disc)
-    const dmgCost = Math.floor(30 * disc)
-    const healAmt = Math.max(1, Math.floor(rs.maxHp * 0.25))
-
+  /** Equal-value free buffs: heal 35% / +1 def / +1 dmg. */
+  private standardOffers(rs: RunState): ShopOffer[] {
+    const healAmt = Math.max(1, Math.floor(rs.maxHp * 0.35))
     return [
       {
-        label: t('shop.heal', { n: healCost }),
-        cost: healCost,
+        label: t('shop.healFree', { n: healAmt }),
         enabled: rs.hp < rs.maxHp,
         apply: () => {
           rs.hp = Math.min(rs.maxHp, rs.hp + healAmt)
         },
       },
       {
-        label: t('shop.def', { n: defCost }),
-        cost: defCost,
+        label: t('shop.defFree'),
         enabled: true,
         apply: () => {
           rs.bonusDefFlat += 1
@@ -140,8 +140,7 @@ export class ShopScene extends Phaser.Scene {
         },
       },
       {
-        label: t('shop.dmg', { n: dmgCost }),
-        cost: dmgCost,
+        label: t('shop.dmgFree'),
         enabled: true,
         apply: () => {
           rs.bonusDmgFlat += 1
@@ -150,52 +149,30 @@ export class ShopScene extends Phaser.Scene {
     ]
   }
 
-  private mapShopOffers(rs: RunState, disc: number): ShopOffer[] {
-    const healCost = Math.floor(20 * disc)
-    const dmgCost = Math.floor(35 * disc)
-    const passiveCost = Math.floor(50 * disc)
+  private mapShopOffers(rs: RunState): ShopOffer[] {
+    const offers = this.standardOffers(rs)
     const [pid] = pickRandomPassiveIds(1, rs.passives, () => Math.random())
-
-    return [
-      {
-        label: t('shop.heal', { n: healCost }),
-        cost: healCost,
-        enabled: rs.hp < rs.maxHp,
-        apply: () => {
-          rs.hp = Math.min(rs.maxHp, rs.hp + Math.floor(rs.maxHp * 0.25))
-        },
-      },
-      {
-        label: t('shop.dmg', { n: dmgCost }),
-        cost: dmgCost,
+    if (pid) {
+      // Rotate: replace def with passive sometimes so map shops stay varied
+      offers[1] = {
+        label: t('shop.passiveFree', { name: passiveName(pid) }),
         enabled: true,
         apply: () => {
-          rs.bonusDmgFlat += 1
+          if (!rs.passives.includes(pid)) rs.passives.push(pid)
         },
-      },
-      {
-        label: `${pid ? passiveName(pid) : t('reward.passive')} (${passiveCost}a)`,
-        cost: passiveCost,
-        enabled: !!pid,
-        apply: () => {
-          if (pid && !rs.passives.includes(pid)) rs.passives.push(pid)
-        },
-      },
-    ]
+      }
+    }
+    return offers
   }
 
-  private buy(rs: RunState, cost: number, apply: () => void) {
-    if (this.locked || rs.coins < cost) return
-    rs.coins -= cost
+  private pick(rs: RunState, apply: () => void) {
+    if (this.locked || this.picked) return
+    this.picked = true
     apply()
     syncRunStateDerived(rs)
-    AudioSystem.play('coin')
+    AudioSystem.play('select')
     SaveSystem.save('quicksave', rs)
-    this.scene.restart({
-      runState: rs,
-      postCombat: this.postCombat,
-      soulsGained: this.soulsGained,
-    })
+    this.leave(rs)
   }
 
   private leave(rs: RunState) {

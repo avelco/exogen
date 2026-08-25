@@ -10,7 +10,10 @@ import {
   RUNE_SLOT_COUNT,
   type GearSlot,
 } from '../domain/items/Item'
-import { sumLoadoutMods } from '../domain/progression/Loadout'
+import {
+  formatLoadoutCombatExtras,
+  sumLoadoutMods,
+} from '../domain/progression/Loadout'
 import {
   ItemTooltip,
   emptyRuneTooltip,
@@ -123,10 +126,12 @@ export class InventoryScene extends Phaser.Scene {
 
     const meta = MetaProgression.load()
     const mods = sumLoadoutMods(meta.loadout)
+    const extras = formatLoadoutCombatExtras(mods)
     this.statsText.setText(
-      `HP+${mods.maxHp}  DEF+${mods.defFlat}  DMG+${mods.dmgFlat}  ` +
-        `HP+${mods.diceAtk * 2}  DMG+${mods.rerollAtk}  ${t('inv.coinsBonus', { n: mods.startGold })}` +
-        `  |  ${t('inv.metaGold', { n: MetaProgression.getGold() })}`,
+      `HP+${mods.maxHp}  ESC+${mods.defFlat}  DMG+${mods.dmgFlat}  ` +
+        `${t('inv.coinsBonus', { n: mods.startGold })}` +
+        `  |  ${t('inv.metaGold', { n: MetaProgression.getGold() })}` +
+        (extras ? `\n${extras}` : ''),
     )
     const fr = MetaProgression.getFragments()
     this.fragText.setText(

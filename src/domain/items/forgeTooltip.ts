@@ -1,5 +1,4 @@
-import { formatMod } from './Item'
-import { AFFIX_TIER_COLORS, affixAsMod, affixDef } from './Affixes'
+import { AFFIX_TIER_COLORS, affixDef, formatAffix } from './Affixes'
 import { MetaProgression } from '../progression/MetaProgression'
 import { t } from '../../i18n/I18n'
 
@@ -13,7 +12,7 @@ export function gearForgeTooltipLines(
     const a = affixDef(forge.appliedAffixId)
     if (a) {
       lines.push({
-        text: `${t('forge.applied')}: ${formatMod(affixAsMod(a))}`,
+        text: `${t('forge.applied')}: ${formatAffix(a)}`,
         color: AFFIX_TIER_COLORS[a.tier],
       })
     }
@@ -22,7 +21,7 @@ export function gearForgeTooltipLines(
     const a = affixDef(forge.pendingAffixId)
     if (a) {
       lines.push({
-        text: `${t('forge.pending')}: ${formatMod(affixAsMod(a))}`,
+        text: `${t('forge.pending')}: ${formatAffix(a)}`,
         color: AFFIX_TIER_COLORS[a.tier],
       })
     }

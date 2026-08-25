@@ -1,52 +1,346 @@
 {
   "nodes": [
     {
-      "id": "root_lucky",
-      "passiveId": "lucky_roll",
+      "id": "core_vitality",
       "cost": 1,
       "requires": [],
       "col": 0,
-      "row": 0
+      "row": 0,
+      "family": "core",
+      "effects": [{ "type": "maxHp", "value": 4 }]
     },
     {
-      "id": "node_heavy",
-      "passiveId": "heavy_hit",
+      "id": "core_heavy",
       "cost": 1,
-      "requires": ["root_lucky"],
-      "col": 1,
-      "row": 0
-    },
-    {
-      "id": "root_iron",
-      "passiveId": "iron_skin",
-      "cost": 1,
-      "requires": [],
+      "requires": ["core_vitality"],
       "col": 0,
-      "row": 1
+      "row": 1,
+      "family": "core",
+      "effects": [{ "type": "passive", "id": "heavy_hit" }]
     },
     {
-      "id": "node_vamp",
-      "passiveId": "vampiric",
+      "id": "core_wind",
       "cost": 1,
-      "requires": ["root_iron"],
-      "col": 1,
-      "row": 1
-    },
-    {
-      "id": "node_wind",
-      "passiveId": "second_wind",
-      "cost": 1,
-      "requires": ["root_iron"],
-      "col": 2,
-      "row": 1
-    },
-    {
-      "id": "root_merc",
-      "passiveId": "merchant_friend",
-      "cost": 1,
-      "requires": [],
+      "requires": ["core_heavy"],
       "col": 0,
-      "row": 2
+      "row": 2,
+      "family": "core",
+      "effects": [{ "type": "passive", "id": "second_wind" }]
+    },
+    {
+      "id": "core_blood",
+      "cost": 1,
+      "requires": ["core_wind"],
+      "col": 0,
+      "row": 3,
+      "family": "core",
+      "effects": [{ "type": "passive", "id": "vampiric" }]
+    },
+    {
+      "id": "core_trade",
+      "cost": 1,
+      "requires": ["core_blood"],
+      "col": 0,
+      "row": 4,
+      "family": "core",
+      "effects": [{ "type": "passive", "id": "merchant_friend" }]
+    },
+    {
+      "id": "core_opening",
+      "cost": 1,
+      "requires": ["core_trade"],
+      "col": 0,
+      "row": 5,
+      "family": "core",
+      "effects": [{ "type": "startShield", "value": 2 }]
+    },
+
+    {
+      "id": "el_earth_1",
+      "cost": 1,
+      "requires": ["core_opening"],
+      "col": 0,
+      "row": 6,
+      "family": "element",
+      "effects": [{ "type": "resist", "element": "earth", "value": 5 }]
+    },
+    {
+      "id": "el_fire_1",
+      "cost": 1,
+      "requires": ["el_earth_1"],
+      "col": 0,
+      "row": 7,
+      "family": "element",
+      "effects": [{ "type": "resist", "element": "fire", "value": 5 }]
+    },
+    {
+      "id": "el_air_1",
+      "cost": 1,
+      "requires": ["el_fire_1"],
+      "col": 0,
+      "row": 8,
+      "family": "element",
+      "effects": [{ "type": "resist", "element": "air", "value": 5 }]
+    },
+    {
+      "id": "el_water_1",
+      "cost": 1,
+      "requires": ["el_air_1"],
+      "col": 0,
+      "row": 9,
+      "family": "element",
+      "effects": [{ "type": "resist", "element": "water", "value": 5 }]
+    },
+    {
+      "id": "el_neutral_1",
+      "cost": 1,
+      "requires": ["el_water_1"],
+      "col": 0,
+      "row": 10,
+      "family": "element",
+      "effects": [{ "type": "resist", "element": "neutral", "value": 5 }]
+    },
+    {
+      "id": "st_aggro_1",
+      "cost": 1,
+      "requires": ["el_neutral_1"],
+      "col": 0,
+      "row": 11,
+      "family": "style",
+      "effects": [{ "type": "bonusDmgFlat", "value": 1 }]
+    },
+    {
+      "id": "st_guard_1",
+      "cost": 1,
+      "requires": ["st_aggro_1"],
+      "col": 0,
+      "row": 12,
+      "family": "style",
+      "effects": [{ "type": "startShield", "value": 2 }]
+    },
+    {
+      "id": "st_survive_1",
+      "cost": 1,
+      "requires": ["st_guard_1"],
+      "col": 0,
+      "row": 13,
+      "family": "style",
+      "effects": [{ "type": "maxHp", "value": 4 }]
+    },
+    {
+      "id": "st_venom_1",
+      "cost": 1,
+      "requires": ["st_survive_1"],
+      "col": 0,
+      "row": 14,
+      "family": "style",
+      "effects": [{ "type": "poisonAmp", "value": 1 }]
+    },
+    {
+      "id": "st_gold_1",
+      "cost": 1,
+      "requires": ["st_venom_1"],
+      "col": 0,
+      "row": 15,
+      "family": "style",
+      "effects": [{ "type": "startCoins", "value": 5 }]
+    },
+
+    {
+      "id": "el_earth_2",
+      "cost": 1,
+      "requires": ["st_gold_1"],
+      "col": 0,
+      "row": 16,
+      "family": "element",
+      "effects": [{ "type": "elementDmg", "element": "earth", "value": 1 }]
+    },
+    {
+      "id": "el_fire_2",
+      "cost": 1,
+      "requires": ["el_earth_2"],
+      "col": 0,
+      "row": 17,
+      "family": "element",
+      "effects": [{ "type": "elementDmg", "element": "fire", "value": 1 }]
+    },
+    {
+      "id": "el_air_2",
+      "cost": 1,
+      "requires": ["el_fire_2"],
+      "col": 0,
+      "row": 18,
+      "family": "element",
+      "effects": [{ "type": "elementDmg", "element": "air", "value": 1 }]
+    },
+    {
+      "id": "el_water_2",
+      "cost": 1,
+      "requires": ["el_air_2"],
+      "col": 0,
+      "row": 19,
+      "family": "element",
+      "effects": [{ "type": "elementDmg", "element": "water", "value": 1 }]
+    },
+    {
+      "id": "el_neutral_2",
+      "cost": 1,
+      "requires": ["el_water_2"],
+      "col": 0,
+      "row": 20,
+      "family": "element",
+      "effects": [{ "type": "elementDmg", "element": "neutral", "value": 1 }]
+    },
+    {
+      "id": "st_aggro_2",
+      "cost": 1,
+      "requires": ["el_neutral_2"],
+      "col": 0,
+      "row": 21,
+      "family": "style",
+      "effects": [{ "type": "bonusDmgFlat", "value": 1 }]
+    },
+    {
+      "id": "st_guard_2",
+      "cost": 1,
+      "requires": ["st_aggro_2"],
+      "col": 0,
+      "row": 22,
+      "family": "style",
+      "effects": [{ "type": "startShield", "value": 2 }]
+    },
+    {
+      "id": "st_survive_2",
+      "cost": 1,
+      "requires": ["st_guard_2"],
+      "col": 0,
+      "row": 23,
+      "family": "style",
+      "effects": [{ "type": "resist", "element": "all", "value": 2 }]
+    },
+    {
+      "id": "st_venom_2",
+      "cost": 1,
+      "requires": ["st_survive_2"],
+      "col": 0,
+      "row": 24,
+      "family": "style",
+      "effects": [{ "type": "poisonAmp", "value": 1 }]
+    },
+    {
+      "id": "st_gold_2",
+      "cost": 1,
+      "requires": ["st_venom_2"],
+      "col": 0,
+      "row": 25,
+      "family": "style",
+      "effects": [{ "type": "goldBonus", "value": 10 }]
+    },
+
+    {
+      "id": "el_earth_3",
+      "cost": 1,
+      "requires": ["st_gold_2"],
+      "col": 0,
+      "row": 26,
+      "family": "element",
+      "effects": [
+        { "type": "resist", "element": "earth", "value": 5 },
+        { "type": "elementDmg", "element": "earth", "value": 1 }
+      ]
+    },
+    {
+      "id": "el_fire_3",
+      "cost": 1,
+      "requires": ["el_earth_3"],
+      "col": 0,
+      "row": 27,
+      "family": "element",
+      "effects": [
+        { "type": "resist", "element": "fire", "value": 5 },
+        { "type": "elementDmg", "element": "fire", "value": 1 }
+      ]
+    },
+    {
+      "id": "el_air_3",
+      "cost": 1,
+      "requires": ["el_fire_3"],
+      "col": 0,
+      "row": 28,
+      "family": "element",
+      "effects": [
+        { "type": "resist", "element": "air", "value": 5 },
+        { "type": "elementDmg", "element": "air", "value": 1 }
+      ]
+    },
+    {
+      "id": "el_water_3",
+      "cost": 1,
+      "requires": ["el_air_3"],
+      "col": 0,
+      "row": 29,
+      "family": "element",
+      "effects": [
+        { "type": "resist", "element": "water", "value": 5 },
+        { "type": "elementDmg", "element": "water", "value": 1 }
+      ]
+    },
+    {
+      "id": "el_neutral_3",
+      "cost": 1,
+      "requires": ["el_water_3"],
+      "col": 0,
+      "row": 30,
+      "family": "element",
+      "effects": [
+        { "type": "resist", "element": "neutral", "value": 5 },
+        { "type": "elementDmg", "element": "neutral", "value": 1 }
+      ]
+    },
+    {
+      "id": "st_aggro_3",
+      "cost": 1,
+      "requires": ["el_neutral_3"],
+      "col": 0,
+      "row": 31,
+      "family": "style",
+      "effects": [{ "type": "bonusDmgFlat", "value": 2 }]
+    },
+    {
+      "id": "st_guard_3",
+      "cost": 1,
+      "requires": ["st_aggro_3"],
+      "col": 0,
+      "row": 32,
+      "family": "style",
+      "effects": [{ "type": "resist", "element": "all", "value": 3 }]
+    },
+    {
+      "id": "st_survive_3",
+      "cost": 1,
+      "requires": ["st_guard_3"],
+      "col": 0,
+      "row": 33,
+      "family": "style",
+      "effects": [{ "type": "maxHp", "value": 6 }]
+    },
+    {
+      "id": "st_venom_3",
+      "cost": 1,
+      "requires": ["st_survive_3"],
+      "col": 0,
+      "row": 34,
+      "family": "style",
+      "effects": [{ "type": "poisonAmp", "value": 1 }]
+    },
+    {
+      "id": "st_gold_3",
+      "cost": 1,
+      "requires": ["st_venom_3"],
+      "col": 0,
+      "row": 35,
+      "family": "style",
+      "effects": [{ "type": "startCoins", "value": 10 }]
     }
   ]
 }

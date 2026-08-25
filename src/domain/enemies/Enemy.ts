@@ -1,19 +1,38 @@
 import enemiesData from '../../data/enemies.json'
 import type { MapNodeKind } from '../map/NodeTypes'
 import type { RewardTier } from '../progression/RunState'
+import {
+  normalizeResistances,
+  zeroResistances,
+  type ElementResistances,
+} from '../combat/Elements'
+import { compensateEnemyHpForCardDie } from '../combat/CardEffectDie'
 
-export type EnemySkill = 'split' | 'bone_toss' | 'steal' | 'phase' | 'slam'
+export type EnemySkill = 'split' | 'bone_toss' | 'steal' | 'phase' | 'slam' | 'echo'
 
 interface EnemyTemplate {
   id: string
   name: string
   roles: string[]
+  /** First campaign depth at which this template can appear. */
+  minFloor?: number
   baseHp: number
   baseDef: number
   skill: EnemySkill
+  resistances?: ElementResistances
 }
 
 const TEMPLATES = enemiesData as EnemyTemplate[]
+
+/** Difficulty spikes: depth 100 ("Exudación") and 300 ("Desbordamiento"). */
+export const THRESHOLD_VOID = 100
+export const THRESHOLD_PHASE = 300
+
+export function thresholdMult(floor: number): number {
+  if (floor >= THRESHOLD_PHASE) return 2
+  if (floor >= THRESHOLD_VOID) return 1.5
+  return 1
+}
 
 const ENEMY_DECKS: Record<string, string[]> = {
   normal: [
@@ -22,11 +41,11 @@ const ENEMY_DECKS: Record<string, string[]> = {
   ],
   elite: [
     'bash', 'slash', 'venom', 'plague', 'barrier',
-    'fortify', 'poison_stab', 'shield_bash', 'mend', 'strike',
+    'fortify', 'poison_stab', 'shield_bash', 'mend', 'phase_insulator',
   ],
   boss: [
     'crush', 'slash', 'plague', 'blight', 'aegis',
-    'fortify', 'poison_stab', 'shield_bash', 'restore', 'bash',
+    'fortify', 'poison_stab', 'shield_bash', 'restore', 'void_weave',
   ],
 }
 
@@ -54,6 +73,9 @@ export class Enemy {
   bonusDef = 0
   shield = 0
   poison = 0
+  resistances: ElementResistances
+  /** 'echo' skill: true once the copy has been summoned. */
+  echoUsed = false
 
   constructor(
     templateId: string,
@@ -63,6 +85,7 @@ export class Enemy {
     skill: EnemySkill,
     deckDefs: string[],
     actionSlots: number,
+    resistances: ElementResistances = zeroResistances(),
   ) {
     this.templateId = templateId
     this.name = name
@@ -72,6 +95,7 @@ export class Enemy {
     this.skill = skill
     this.deckDefs = deckDefs
     this.actionSlots = actionSlots
+    this.resistances = resistances
   }
 
   get totalDefense(): number {
@@ -93,15 +117,28 @@ export class Enemy {
     if (kind === 'elite') role = 'elite'
     if (kind === 'boss') role = 'boss'
 
-    const pool = TEMPLATES.filter(t => t.roles.includes(role))
-    const tpl = pool[Math.floor(rng() * pool.length)] ?? TEMPLATES[0]
+    const pool = TEMPLATES.filter(
+      t => t.roles.includes(role) && (t.minFloor ?? 1) <= floor,
+    )
+    const tpl = pool[Math.floor(rng() * pool.length)] ?? TEMPLATES[0]!
 
     const scale = kind === 'boss' ? 1.55 : kind === 'elite' ? 1.15 : 1
+    const mult = thresholdMult(floor)
     const baseHp = 28 + Math.floor(rng() * 10)
-    const hp = Math.floor((baseHp + floor * 6) * scale + rng() * 3)
-    const def = Math.floor((tpl.baseDef + floor * 0.5) * scale)
+    // Sublinear depth growth so high floors stay hard, not endless.
+    const depthHp = Math.floor(6 * Math.pow(Math.max(1, floor), 0.72))
+    const depthDef = Math.floor(0.35 * Math.pow(Math.max(1, floor), 0.65))
+    const generatedHp = Math.floor((baseHp + depthHp) * scale * mult + rng() * 3)
+    let hp = compensateEnemyHpForCardDie(generatedHp)
+    if (floor === 1 && kind !== 'boss') {
+      // Tutorial depth: every non-boss wave dies in ~2 player rounds.
+      hp = 32 + Math.floor(rng() * 9)
+    }
+    const def = Math.floor((tpl.baseDef + depthDef) * scale * mult)
     const deckKey = kind === 'boss' ? 'boss' : kind === 'elite' ? 'elite' : 'normal'
-    const actionSlots = kind === 'boss' ? 3 : 2
+    // Past the first threshold, elites and bosses play one extra card per turn.
+    const actionSlots = (kind === 'boss' ? 3 : 2) + (floor >= THRESHOLD_VOID && kind !== 'combat' ? 1 : 0)
+    const resistances = normalizeResistances(tpl.resistances)
 
     return new Enemy(
       tpl.id,
@@ -111,6 +148,7 @@ export class Enemy {
       tpl.skill,
       [...ENEMY_DECKS[deckKey]!],
       actionSlots,
+      resistances,
     )
   }
 
@@ -123,6 +161,9 @@ export class Enemy {
     let count = 2
     if (kind === 'boss') {
       count = 1
+    } else if (floor === 1) {
+      // Tutorial depth: 1–2 enemies per wave.
+      count = 1 + (rng() < 0.5 ? 1 : 0)
     } else if (kind === 'elite') {
       count = 2 + (rng() < 0.5 ? 1 : 0)
     } else {

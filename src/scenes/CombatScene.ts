@@ -8,14 +8,20 @@ import { addPixelText } from '../ui/pixelText'
 import { Enemy } from '../domain/enemies/Enemy'
 import { EnemyAI } from '../domain/enemies/EnemyAI'
 import { CombatEngine, toFighter } from '../domain/combat/CombatEngine'
+import {
+  rollCardEffectDice,
+  type CardEffectDieFace,
+  type CardEffectDieRoll,
+  type CardEffectMultiplier,
+} from '../domain/combat/CardEffectDie'
 import type { RunState } from '../domain/progression/RunState'
 import { rollCombatSouls } from '../domain/progression/CombatRewards'
 import { AudioSystem } from '../systems/AudioSystem'
+import { preferReducedMotion } from '../systems/Device'
 import { bindSceneKeys } from '../systems/bindSceneKeys'
-import { charName, enemyName, t } from '../i18n/I18n'
-import { minZoneSize } from '../ui/touchTarget'
-import { addBackButton } from '../ui/BackButton'
+import { enemyName, t, tKey } from '../i18n/I18n'
 import { showConfirmModal } from '../ui/ConfirmModal'
+import { showInfoModal } from '../ui/InfoModal'
 import { MetaProgression } from '../domain/progression/MetaProgression'
 import { TutorialBanner } from '../ui/TutorialBanner'
 import {
@@ -27,18 +33,58 @@ import {
   unplaySlot,
   type CombatDeck,
 } from '../domain/cards/Deck'
-import { previewCards } from '../domain/cards/CardEffects'
+import { previewCardsVs, COMBAT_RESIST_CAP } from '../domain/cards/CardEffects'
+import {
+  cardDef,
+  cardRarityDef,
+  effectsOf,
+  type CardEffect,
+  type RunCard,
+} from '../domain/cards/Card'
+import {
+  ELEMENTS,
+  ELEMENT_COLOR,
+  zeroResistances,
+  type Element,
+  type ElementResistances,
+} from '../domain/combat/Elements'
 
-const DEF_MAX = 18
-const ENEMY_ARENA_Y = 72
-const HERO_ARENA_Y = 158
+const ENEMY_ARENA_Y = 78
+const HERO_ARENA_Y = 168
 const ENEMY_SCALE = 0.7
-const HERO_SCALE = 1.2
+const HERO_SCALE = 1.15
 const QUEUE_X = 22
 const QUEUE_STEP_Y = 18
-const ENEMY_BAR_W = 100
+const ENEMY_BAR_W = 110
 const HERO_BAR_W = 130
 const BAR_H = 9
+const ACTION_PANEL_TOP = 210
+const SLOT_Y = 256
+const PREVIEW_Y = 314
+const DIE_PIPS: Record<CardEffectDieFace, ReadonlyArray<readonly [number, number]>> = {
+  1: [[0, 0]],
+  2: [[-4, -4], [4, 4]],
+  3: [[-4, -4], [0, 0], [4, 4]],
+  4: [[-4, -4], [4, -4], [-4, 4], [4, 4]],
+  5: [[-4, -4], [4, -4], [0, 0], [-4, 4], [4, 4]],
+  6: [[-4, -5], [-4, 0], [-4, 5], [4, -5], [4, 0], [4, 5]],
+}
+const END_TURN_Y = 358
+const HAND_LABEL_Y = 386
+const HAND_Y = 428
+
+type PreviewStat = {
+  type: CardEffect['type']
+  value: number
+  color: string
+}
+type CardEffectDiePhase = 'idle' | 'rolling' | 'pickTwo' | 'pickOne' | 'reveal'
+
+type DieEntry = {
+  gfx: Phaser.GameObjects.Graphics
+  backTxt: Phaser.GameObjects.Text | null
+  zone: Phaser.GameObjects.Zone
+}
 
 export class CombatScene extends Phaser.Scene {
   private state!: RunState
@@ -46,7 +92,6 @@ export class CombatScene extends Phaser.Scene {
   private wave: Enemy[] = []
 
   private heroHpBar!: HealthBar
-  private heroDefBar!: HealthBar
   private enemyHpBar!: HealthBar
 
   private deck!: CombatDeck
@@ -54,15 +99,23 @@ export class CombatScene extends Phaser.Scene {
   private slotSprites: (CardSprite | null)[] = []
   private slotZones: Phaser.GameObjects.Rectangle[] = []
 
-  private endTurnBtn!: Phaser.GameObjects.Zone
+  private endTurnBtn!: Phaser.GameObjects.Rectangle
   private endTurnTxt!: Phaser.GameObjects.Text
   private previewTxt!: Phaser.GameObjects.Text
+  private previewGfx!: Phaser.GameObjects.Graphics
+  private previewValueTexts: Phaser.GameObjects.Text[] = []
+  private cardEffectDiePhase: CardEffectDiePhase = 'idle'
+  private pendingDiePlayed: RunCard[] | null = null
+  private pendingDiceRolls: CardEffectDieRoll[] = []
+  private dieEntries: DieEntry[] = []
+  private pickedDieIndices: number[] = []
+  private keptDieIndex = -1
+  private inspectionObjects: Phaser.GameObjects.GameObject[] = []
+  private cardAnimating = false
   private attacking = false
 
   private heroGfx!: Phaser.GameObjects.Graphics
   private enemyGfx!: Phaser.GameObjects.Graphics
-  private enemyNameText!: Phaser.GameObjects.Text
-  private enemyIntentTxt!: Phaser.GameObjects.Text
   private queueGfx: Phaser.GameObjects.Graphics[] = []
   private pathGfx!: Phaser.GameObjects.Graphics
   private shakeTimers = new Map<object, Phaser.Time.TimerEvent>()
@@ -71,8 +124,11 @@ export class CombatScene extends Phaser.Scene {
   private heroArenaX = 135
   private enemyArenaX = 135
   private abandonOpen = false
+  private resistInfoOpen = false
   private enemyDeck!: CombatDeck
   private statusTxt!: Phaser.GameObjects.Text
+  /** Combat-only resist from cards (lost when the fight ends). */
+  private combatResists: ElementResistances = zeroResistances()
 
   constructor() {
     super('CombatScene')
@@ -82,13 +138,44 @@ export class CombatScene extends Phaser.Scene {
     this.handSprites = []
     this.slotSprites = []
     this.slotZones = []
+    this.previewValueTexts = []
+    this.cardEffectDiePhase = 'idle'
+    this.pendingDiePlayed = null
+    this.pendingDiceRolls = []
+    this.dieEntries = []
+    this.pickedDieIndices = []
+    this.keptDieIndex = -1
+    this.inspectionObjects = []
+    this.cardAnimating = false
     this.wave = []
     this.queueGfx = []
     this.attacking = false
     this.abandonOpen = false
+    this.resistInfoOpen = false
+    this.combatResists = zeroResistances()
     this.shakeTimers.clear()
     this.shakeRests.clear()
     this.children.removeAll(true)
+  }
+
+  /** Permanent resists + combat-only card resists (fresh object each call). */
+  private heroCombatResistances(): ElementResistances {
+    const out = { ...this.state.heroResistances }
+    for (const el of ELEMENTS) {
+      out[el] = (out[el] ?? 0) + this.combatResists[el]
+    }
+    return out
+  }
+
+  private gainCombatResists(granted: Partial<ElementResistances>) {
+    for (const el of ELEMENTS) {
+      const v = granted[el]
+      if (!v) continue
+      this.combatResists[el] = Math.min(
+        COMBAT_RESIST_CAP,
+        this.combatResists[el] + v,
+      )
+    }
   }
 
   create() {
@@ -114,13 +201,23 @@ export class CombatScene extends Phaser.Scene {
     this.bindEnemyBars()
     this.refreshHandUi()
     this.updatePreview()
-    this.previewEnemyIntent()
     this.enableInput()
 
     // Start-of-combat poison tick (none yet)
     this.applyHeroShieldBar()
 
-    addBackButton(this, () => this.promptAbandonFight(), { labelKey: 'combat.esc' })
+    // Depth 300+: ambient phase leak poisons the hero every combat.
+    if (this.state.floor >= 300) {
+      this.state.heroPoison += 2
+      this.updateStatusTxt()
+      const warn = addPixelText(this, this.cameras.main.width / 2, 200, t('combat.phaseLeak'), {
+        fontSize: '8px',
+        color: '#88cc44',
+      }).setOrigin(0.5).setDepth(50)
+      this.tweens.add({ targets: warn, alpha: 0, y: 188, duration: 1600, onComplete: () => warn.destroy() })
+    }
+
+    this.drawPauseButton()
 
     bindSceneKeys(this, {
       'keydown-ESC': () => this.promptAbandonFight(),
@@ -132,6 +229,46 @@ export class CombatScene extends Phaser.Scene {
       const tip = new TutorialBanner(this)
       tip.show('tutorial.combat', () => tip.destroy())
     }
+  }
+
+  private drawPauseButton() {
+    const { width } = this.cameras.main
+    const size = 22
+    const x = width - size - 6
+    const y = 6
+    const root = this.add.container(x, y).setDepth(50)
+
+    const bg = this.add.graphics()
+    const drawBg = (hover: boolean) => {
+      bg.clear()
+      bg.fillStyle(hover ? 0x2a2a3a : 0x12121c, 0.9)
+      bg.fillRoundedRect(0, 0, size, size, 3)
+      bg.lineStyle(1, hover ? 0xaaaacc : 0x777788, 1)
+      bg.strokeRoundedRect(0, 0, size, size, 3)
+    }
+    drawBg(false)
+    root.add(bg)
+
+    const bars = this.add.graphics()
+    const drawBars = (hover: boolean) => {
+      bars.clear()
+      bars.fillStyle(hover ? 0xffffff : 0xdddddd, 1)
+      bars.fillRect(6, 5, 4, 12)
+      bars.fillRect(12, 5, 4, 12)
+    }
+    drawBars(false)
+    root.add(bars)
+
+    const zone = this.add
+      .zone(size / 2, size / 2, 36, 36)
+      .setInteractive({ useHandCursor: true })
+    root.add(zone)
+    zone.on('pointerover', () => { drawBg(true); drawBars(true) })
+    zone.on('pointerout', () => { drawBg(false); drawBars(false) })
+    zone.on('pointerdown', () => {
+      AudioSystem.play('ui')
+      this.promptAbandonFight()
+    })
   }
 
   private promptAbandonFight() {
@@ -161,22 +298,6 @@ export class CombatScene extends Phaser.Scene {
 
     this.heroGfx = this.drawCharacter(this.heroArenaX, HERO_ARENA_Y, HERO_SCALE, 0x6688cc)
     this.enemyGfx = this.drawCharacter(this.enemyArenaX, ENEMY_ARENA_Y, ENEMY_SCALE, 0xcc6666)
-
-    this.enemyNameText = addPixelText(
-      this,
-      this.enemyArenaX,
-      ENEMY_ARENA_Y - 34 * ENEMY_SCALE,
-      enemyName(this.enemy.templateId),
-      { fontSize: '8px', color: '#ffaaaa' },
-    ).setOrigin(0.5).setDepth(5)
-
-    this.enemyIntentTxt = addPixelText(
-      this,
-      this.enemyArenaX,
-      ENEMY_ARENA_Y - 18 * ENEMY_SCALE,
-      '',
-      { fontSize: '8px', color: '#ffcc66' },
-    ).setOrigin(0.5).setDepth(5)
 
     this.redrawEnemyQueue()
   }
@@ -214,58 +335,83 @@ export class CombatScene extends Phaser.Scene {
 
   private drawBars() {
     const { width } = this.cameras.main
-    this.heroHpBar = new HealthBar(
-      this,
-      this.heroArenaX - HERO_BAR_W / 2,
-      HERO_ARENA_Y - 48,
-      HERO_BAR_W,
-      BAR_H,
-      this.state.maxHp,
-      0x44cc66,
-      charName(this.state.characterName),
-    )
-    this.heroHpBar.setValue(this.state.hp)
-
-    this.heroDefBar = new HealthBar(
-      this,
-      this.heroArenaX - HERO_BAR_W / 2,
-      HERO_ARENA_Y - 36,
-      HERO_BAR_W,
-      6,
-      DEF_MAX,
-      0x4488cc,
-      t('combat.defense'),
-    )
-    this.heroDefBar.setValue(this.state.heroShield)
-
+    // Enemy: name + HP + ESC + resists stacked above the sprite.
     this.enemyHpBar = new HealthBar(
       this,
       this.enemyArenaX - ENEMY_BAR_W / 2,
-      ENEMY_ARENA_Y - 48,
+      18,
       ENEMY_BAR_W,
       BAR_H,
       this.enemy.maxHp,
       0xcc4444,
       enemyName(this.enemy.templateId),
     )
+    this.enemyHpBar.setDepth(6)
+    this.enemyHpBar.setValue(this.enemy.hp)
+    this.enemyHpBar.setDefense(this.enemy.shield)
+    this.enemyHpBar.setResistances(this.enemy.resistances)
+    this.enemyHpBar.setResistHoldHandler(el => this.showResistInfo(el, 'enemy'))
 
-    this.statusTxt = addPixelText(this, width / 2, 28, '', {
+    // Hero: same stack, clear of the action panel.
+    this.heroHpBar = new HealthBar(
+      this,
+      this.heroArenaX - HERO_BAR_W / 2,
+      HERO_ARENA_Y - 52,
+      HERO_BAR_W,
+      BAR_H,
+      this.state.maxHp,
+      0x44cc66,
+      t('player.name'),
+    )
+    this.heroHpBar.setDepth(6)
+    this.heroHpBar.setValue(this.state.hp)
+    this.heroHpBar.setDefense(this.state.heroShield)
+    this.heroHpBar.setResistances(this.heroCombatResistances())
+    this.heroHpBar.setResistHoldHandler(el => this.showResistInfo(el, 'hero'))
+
+    this.statusTxt = addPixelText(this, width / 2, ACTION_PANEL_TOP - 8, '', {
       fontSize: '8px',
       color: '#aaaaaa',
     }).setOrigin(0.5).setDepth(8)
     this.updateStatusTxt()
   }
 
+  private showResistInfo(el: Element, owner: 'hero' | 'enemy') {
+    if (this.resistInfoOpen || this.abandonOpen) return
+    this.resistInfoOpen = true
+    const elementName = tKey(`element.${el}`, el).toUpperCase()
+    const lines: string[] = []
+    if (owner === 'hero') {
+      const base = this.state.heroResistances[el] ?? 0
+      const cards = this.combatResists[el]
+      lines.push(t('combat.resist.base', { n: base }))
+      lines.push(t('combat.resist.cards', { n: cards }))
+      lines.push(t('combat.resist.total', { n: base + cards }))
+    } else {
+      lines.push(t('combat.resist.innate', { n: this.enemy.resistances[el] ?? 0 }))
+    }
+    showInfoModal(this, {
+      title: t('combat.resist.title', { element: elementName }),
+      body: lines.join('\n'),
+      closeLabel: t('ui.close'),
+      onClose: () => {
+        this.resistInfoOpen = false
+      },
+    })
+  }
+
   private bindEnemyBars() {
     this.enemyHpBar.setMax(this.enemy.maxHp)
     this.enemyHpBar.setValue(this.enemy.hp)
     this.enemyHpBar.setDefense(this.enemy.shield)
+    this.enemyHpBar.setLabel(enemyName(this.enemy.templateId))
+    this.enemyHpBar.setResistances(this.enemy.resistances)
   }
 
   private applyHeroShieldBar() {
-    if (this.state.heroShield > DEF_MAX) this.heroDefBar.setMax(this.state.heroShield)
-    this.heroDefBar.setValue(this.state.heroShield)
     this.heroHpBar.setValue(this.state.hp)
+    this.heroHpBar.setDefense(this.state.heroShield)
+    this.heroHpBar.setResistances(this.heroCombatResistances())
   }
 
   private updateStatusTxt() {
@@ -276,75 +422,96 @@ export class CombatScene extends Phaser.Scene {
   }
 
   private drawCardUi() {
-    const { width, height } = this.cameras.main
+    const { width } = this.cameras.main
     const cx = width / 2
-    const slotY = height - 168
-    const handY = height - 70
 
-    addPixelText(this, cx, slotY - 28, t('combat.slots'), {
-      fontSize: '8px',
-      color: '#aaaaaa',
-    }).setOrigin(0.5)
+    this.add
+      .rectangle(cx, ACTION_PANEL_TOP + 84, width - 16, 168, 0x121220, 0.94)
+      .setStrokeStyle(1, 0x3f4055)
+      .setDepth(3)
 
     const n = this.state.actionSlots
     const gap = 8
-    const totalW = n * CardSprite.WIDTH + (n - 1) * gap
-    const startX = cx - totalW / 2 + CardSprite.WIDTH / 2
+    const slotW = CardSprite.SELECTED_WIDTH
+    const totalW = n * slotW + (n - 1) * gap
+    const startX = cx - totalW / 2 + slotW / 2
     this.slotSprites = Array.from({ length: n }, () => null)
     this.slotZones = []
     for (let i = 0; i < n; i++) {
-      const x = startX + i * (CardSprite.WIDTH + gap)
+      const x = startX + i * (slotW + gap)
       const rect = this.add
-        .rectangle(x, slotY, CardSprite.WIDTH, CardSprite.HEIGHT, 0x1a1a28, 0.9)
-        .setStrokeStyle(1, 0x555566)
+        .rectangle(x, SLOT_Y, slotW, CardSprite.SELECTED_HEIGHT, 0x191925, 1)
+        .setStrokeStyle(1, 0x5b5d72)
         .setDepth(4)
         .setInteractive({ useHandCursor: true })
+      addPixelText(this, x, SLOT_Y, `${i + 1}`, {
+        fontSize: '8px',
+        color: '#4d4f62',
+      }).setOrigin(0.5).setDepth(5)
       rect.on('pointerdown', () => this.onSlotTap(i))
       this.slotZones.push(rect)
+
+      if (i + 1 < n) {
+        const arrow = this.add.graphics().setDepth(5)
+        const arrowX = x + slotW / 2 + gap / 2
+        arrow.fillStyle(0x65728b, 1)
+        arrow.fillTriangle(arrowX - 3, SLOT_Y, arrowX + 3, SLOT_Y - 4, arrowX + 3, SLOT_Y + 4)
+      }
     }
 
-    this.previewTxt = addPixelText(this, cx, slotY + CardSprite.HEIGHT / 2 + 14, '', {
+    this.previewTxt = addPixelText(this, cx, PREVIEW_Y - 8, t('combat.preview'), {
       fontSize: '8px',
-      color: '#dddddd',
+      color: '#899bb5',
     }).setOrigin(0.5).setDepth(8)
+    this.previewGfx = this.add.graphics().setDepth(8)
 
-    const btnY = handY - CardSprite.HEIGHT / 2 - 18
-    this.endTurnTxt = addPixelText(this, cx, btnY, t('combat.endTurn'), {
-      fontSize: '12px',
-      color: '#88cc88',
-    }).setOrigin(0.5).setDepth(8)
-    const zone = minZoneSize(80, 20, 28)
     this.endTurnBtn = this.add
-      .zone(cx, btnY, zone.w, zone.h)
+      .rectangle(cx, END_TURN_Y, 116, 28, 0x24472f, 1)
+      .setStrokeStyle(1, 0x66bb77)
       .setInteractive({ useHandCursor: true })
-      .setDepth(8)
+      .setDepth(7)
     this.endTurnBtn.on('pointerdown', () => this.onEndTurn())
+    this.endTurnBtn.on('pointerover', () => {
+      if (!this.attacking && !this.cardAnimating) this.endTurnBtn.setFillStyle(0x2f5b3d, 1)
+    })
+    this.endTurnBtn.on('pointerout', () => {
+      if (!this.attacking && !this.cardAnimating) this.endTurnBtn.setFillStyle(0x24472f, 1)
+    })
 
-    addPixelText(this, 8, handY - CardSprite.HEIGHT / 2 - 14, charName(this.state.characterName), {
+    this.endTurnTxt = addPixelText(this, cx, END_TURN_Y, t('combat.dieRoll'), {
       fontSize: '8px',
-      color: '#88aacc',
-    }).setDepth(8)
+      color: '#baf2c4',
+    }).setOrigin(0.5).setDepth(8)
+
+    addPixelText(this, cx, HAND_LABEL_Y, t('combat.pickCards'), {
+      fontSize: '8px',
+      color: '#8990aa',
+    }).setOrigin(0.5).setDepth(8)
   }
 
   private refreshHandUi() {
-    for (const s of this.handSprites) s.destroy()
+    for (const sprite of this.handSprites) sprite.destroy()
     this.handSprites = []
-    const { width, height } = this.cameras.main
-    const handY = height - 70
+    const { width } = this.cameras.main
     const n = this.deck.hand.length
     if (n === 0) return
     const gap = 4
-    const totalW = n * CardSprite.WIDTH + (n - 1) * gap
-    const startX = width / 2 - totalW / 2 + CardSprite.WIDTH / 2
-    this.deck.hand.forEach((card, i) => {
+    const totalW = n * CardSprite.COMPACT_WIDTH + (n - 1) * gap
+    const startX = width / 2 - totalW / 2 + CardSprite.COMPACT_WIDTH / 2
+    this.deck.hand.forEach((card, index) => {
       const sprite = new CardSprite(
         this,
-        startX + i * (CardSprite.WIDTH + gap),
-        handY,
+        startX + index * (CardSprite.COMPACT_WIDTH + gap),
+        HAND_Y,
         card,
+        'compact',
       )
       sprite.setDepth(10)
-      sprite.onTap = () => this.onHandTap(card.id)
+      sprite.setEnabled(!this.attacking)
+      sprite.onTap = () => this.onHandTap(card.id, sprite)
+      sprite.onHold = () => {
+        if (!this.cardAnimating) this.showCardInspection(card)
+      }
       this.handSprites.push(sprite)
     })
   }
@@ -354,101 +521,479 @@ export class CombatScene extends Phaser.Scene {
       this.slotSprites[i]?.destroy()
       this.slotSprites[i] = null
     }
-    const { width, height } = this.cameras.main
-    const slotY = height - 168
+    const { width } = this.cameras.main
     const n = this.state.actionSlots
     const gap = 8
-    const totalW = n * CardSprite.WIDTH + (n - 1) * gap
-    const startX = width / 2 - totalW / 2 + CardSprite.WIDTH / 2
+    const slotW = CardSprite.SELECTED_WIDTH
+    const totalW = n * slotW + (n - 1) * gap
+    const startX = width / 2 - totalW / 2 + slotW / 2
     for (let i = 0; i < n; i++) {
       const card = this.deck.slots[i]
-      if (!card) continue
+      const zone = this.slotZones[i]!
+      if (!card) {
+        zone.setFillStyle(0x191925, 1).setStrokeStyle(1, 0x5b5d72)
+        continue
+      }
+      const rarity = cardDef(card.defId)?.rarity ?? 'common'
+      const color = Phaser.Display.Color.HexStringToColor(
+        cardRarityDef(rarity).accentColor ?? cardRarityDef(rarity).color,
+      ).color
+      zone.setFillStyle(0x20324b, 1).setStrokeStyle(2, color)
       const sprite = new CardSprite(
         this,
-        startX + i * (CardSprite.WIDTH + gap),
-        slotY,
+        startX + i * (slotW + gap),
+        SLOT_Y,
         card,
+        'selected',
       )
       sprite.setDepth(12)
       sprite.setSelected(true)
-      sprite.onTap = () => this.onSlotTap(i)
+      sprite.setEnabled(!this.attacking)
+      sprite.onTap = () => this.onSlotTap(i, sprite)
       this.slotSprites[i] = sprite
     }
   }
 
-  private onHandTap(cardId: string) {
-    if (this.attacking) return
-    if (!playFromHand(this.deck, cardId)) return
+  private onHandTap(cardId: string, sprite?: CardSprite) {
+    if (this.attacking || this.cardAnimating) return
+    const targetIndex = this.deck.slots.findIndex(slot => slot == null)
+    if (targetIndex < 0 || !playFromHand(this.deck, cardId)) return
     AudioSystem.play('select')
-    this.refreshHandUi()
-    this.refreshSlotUi()
-    this.updatePreview()
+    if (!sprite) {
+      this.refreshHandUi()
+      this.refreshSlotUi()
+      this.updatePreview()
+      return
+    }
+    this.animateCardTransition(
+      sprite,
+      this.slotZones[targetIndex]!.x,
+      SLOT_Y,
+      CardSprite.SELECTED_WIDTH / CardSprite.COMPACT_WIDTH,
+    )
   }
 
-  private onSlotTap(index: number) {
-    if (this.attacking) return
+  private onSlotTap(index: number, sprite?: CardSprite) {
+    if (this.attacking || this.cardAnimating) return
     if (!unplaySlot(this.deck, index)) return
     AudioSystem.play('ui')
-    this.refreshHandUi()
-    this.refreshSlotUi()
-    this.updatePreview()
+    if (!sprite) {
+      this.refreshHandUi()
+      this.refreshSlotUi()
+      this.updatePreview()
+      return
+    }
+    const n = this.deck.hand.length
+    const gap = 4
+    const totalW = n * CardSprite.COMPACT_WIDTH + (n - 1) * gap
+    const targetX =
+      this.cameras.main.width / 2 -
+      totalW / 2 +
+      CardSprite.COMPACT_WIDTH / 2 +
+      (n - 1) * (CardSprite.COMPACT_WIDTH + gap)
+    this.animateCardTransition(
+      sprite,
+      targetX,
+      HAND_Y,
+      CardSprite.COMPACT_WIDTH / CardSprite.SELECTED_WIDTH,
+    )
   }
 
   private updatePreview() {
     const cards = slottedCards(this.deck)
-    const p = previewCards(cards)
-    const parts: string[] = []
-    if (p.damage) parts.push(`ATK ${p.damage}`)
-    if (p.poison) parts.push(`VEN ${p.poison}`)
-    if (p.shield) parts.push(`ESC ${p.shield}`)
-    if (p.heal) parts.push(`CUR ${p.heal}`)
-    this.previewTxt.setText(parts.length ? parts.join(' · ') : t('combat.pickCards'))
+    const preview = previewCardsVs(cards, this.enemy.resistances, {
+      elementDmgBonus: this.state.elementDmgBonus,
+      poisonAmp: this.state.poisonAmp,
+    })
+    const stats: PreviewStat[] = []
+    if (preview.damage) stats.push({ type: 'damage', value: preview.damage, color: '#ff7777' })
+    if (preview.poison) stats.push({ type: 'poison', value: preview.poison, color: '#99dd55' })
+    if (preview.shield) stats.push({ type: 'shield', value: preview.shield, color: '#77aaff' })
+    if (preview.heal) stats.push({ type: 'heal', value: preview.heal, color: '#66ee99' })
+    for (const element of ELEMENTS) {
+      const value = preview.resist[element]
+      if (value) stats.push({ type: 'resist', value, color: ELEMENT_COLOR[element] })
+    }
+    this.renderPreviewStats(stats)
   }
 
-  private previewEnemyIntent() {
-    const choice = EnemyAI.choosePlays(
-      this.enemyDeck.hand,
-      this.enemy.actionSlots,
-      {
-        hp: this.enemy.hp,
-        maxHp: this.enemy.maxHp,
-        shield: this.enemy.shield,
-        poison: this.enemy.poison,
+  private animateCardTransition(
+    sprite: CardSprite,
+    x: number,
+    y: number,
+    scale: number,
+  ) {
+    this.cardAnimating = true
+    sprite.setDepth(24)
+    this.tweens.add({
+      targets: sprite,
+      x,
+      y,
+      scaleX: scale,
+      scaleY: scale,
+      duration: 180,
+      ease: 'Sine.Out',
+      onComplete: () => {
+        this.cardAnimating = false
+        this.refreshHandUi()
+        this.refreshSlotUi()
+        this.updatePreview()
       },
-      {
-        hp: this.state.hp,
-        maxHp: this.state.maxHp,
-        shield: this.state.heroShield,
-        poison: this.state.heroPoison,
-      },
-    )
-    const p = EnemyAI.previewChoice(choice)
-    const parts: string[] = []
-    if (p.damage) parts.push(`${p.damage}`)
-    if (p.poison) parts.push(`P${p.poison}`)
-    this.enemyIntentTxt.setText(parts.length ? parts.join('/') : '…')
+    })
+  }
+
+  private clearPreviewRow() {
+    for (const text of this.previewValueTexts) text.destroy()
+    this.previewValueTexts = []
+    this.previewGfx.clear()
+  }
+
+  private drawCardEffectDieFace(
+    graphics: Phaser.GameObjects.Graphics,
+    face: CardEffectDieFace,
+  ) {
+    graphics.clear()
+    graphics.fillStyle(0x0b1220, 1)
+    graphics.fillRect(-9, -9, 18, 18)
+    graphics.fillStyle(0x344b6a, 1)
+    graphics.fillRect(-7, -7, 14, 14)
+    graphics.lineStyle(2, 0xd9a8ef, 1)
+    graphics.strokeRect(-8, -8, 16, 16)
+    graphics.fillStyle(0xf4d6ff, 1)
+    for (const [x, y] of DIE_PIPS[face]) {
+      graphics.fillRect(x - 1, y - 1, 3, 3)
+    }
+  }
+
+  private drawCardEffectDieBack(graphics: Phaser.GameObjects.Graphics) {
+    graphics.clear()
+    graphics.fillStyle(0x1b1226, 1)
+    graphics.fillRect(-9, -9, 18, 18)
+    graphics.fillStyle(0x332147, 1)
+    graphics.fillRect(-7, -7, 14, 14)
+    graphics.lineStyle(2, 0x8a6ab0, 1)
+    graphics.strokeRect(-8, -8, 16, 16)
+  }
+
+  private renderPreviewStats(stats: PreviewStat[]) {
+    this.clearPreviewRow()
+    this.previewTxt.setPosition(this.cameras.main.width / 2, PREVIEW_Y - 8).setDepth(8)
+    this.previewTxt.setText(stats.length ? t('combat.preview') : `${t('combat.preview')} · —`)
+    if (stats.length === 0) return
+
+    const widths = stats.map(stat => 14 + String(stat.value).length * 5)
+    const totalW = widths.reduce((sum, width) => sum + width, 0) + (stats.length - 1) * 7
+    let x = this.cameras.main.width / 2 - totalW / 2
+    stats.forEach((stat, index) => {
+      this.drawCombatEffectIcon(this.previewGfx, x + 4, PREVIEW_Y + 6, stat.type, stat.color)
+      const value = addPixelText(this, x + 12, PREVIEW_Y + 6, String(stat.value), {
+        fontSize: '8px',
+        color: stat.color,
+      }).setOrigin(0, 0.5).setDepth(8)
+      this.previewValueTexts.push(value)
+      x += widths[index]! + 7
+    })
+  }
+
+  private showCardInspection(card: RunCard) {
+    this.hideCardInspection()
+    const def = cardDef(card.defId)
+    if (!def) return
+
+    const { width } = this.cameras.main
+    const cx = width / 2
+    const rarity = cardRarityDef(def.rarity)
+    const accent = Phaser.Display.Color.HexStringToColor(
+      rarity.accentColor ?? rarity.color,
+    ).color
+    const panel = this.add.graphics().setDepth(30)
+    panel.fillStyle(0x0c1628, 0.98)
+    panel.fillRect(12, 220, width - 24, 112)
+    panel.lineStyle(2, accent, 1)
+    panel.strokeRect(12, 220, width - 24, 112)
+    this.inspectionObjects.push(panel)
+
+    const symbol = this.add.text(26, 230, rarity.symbol, {
+      fontFamily: 'Arial',
+      fontSize: '16px',
+      color: rarity.accentColor ?? rarity.color,
+    }).setOrigin(0.5).setDepth(31)
+    const title = addPixelText(
+      this,
+      40,
+      230,
+      tKey(`card.${card.defId}.name`, card.defId).toUpperCase(),
+      { fontSize: '8px', color: '#ffffff' },
+    ).setOrigin(0, 0.5).setDepth(31)
+    const rarityTxt = addPixelText(this, width - 24, 230, tKey(`rarity.${def.rarity}`, def.rarity), {
+      fontSize: '8px',
+      color: rarity.accentColor ?? rarity.color,
+    }).setOrigin(1, 0.5).setDepth(31)
+    this.inspectionObjects.push(symbol, title, rarityTxt)
+
+    effectsOf(card).slice(0, 2).forEach((effect, index) => {
+      const y = 261 + index * 20
+      this.drawCombatEffectIcon(panel, 30, y, effect.type, this.effectColor(effect))
+      const text = addPixelText(this, 42, y, this.inspectionEffectText(effect), {
+        fontSize: '8px',
+        color: this.effectColor(effect),
+      }).setOrigin(0, 0.5).setDepth(31)
+      this.inspectionObjects.push(text)
+    })
+    const hint = addPixelText(this, cx, 316, t('combat.inspectRelease'), {
+      fontSize: '8px',
+      color: '#93a0b8',
+    }).setOrigin(0.5).setDepth(31)
+    this.inspectionObjects.push(hint)
+    this.input.once('pointerup', () => this.hideCardInspection())
+  }
+
+  private hideCardInspection() {
+    for (const object of this.inspectionObjects) object.destroy()
+    this.inspectionObjects = []
+  }
+
+  private inspectionEffectText(effect: CardEffect): string {
+    switch (effect.type) {
+      case 'damage':
+        return `${effect.value} DAÑO · ${tKey(
+          `element.${effect.element ?? 'neutral'}`,
+          effect.element ?? 'neutral',
+        )}`
+      case 'shield':
+        return `${effect.value} ESCUDO`
+      case 'heal':
+        return `${effect.value} CURACIÓN`
+      case 'poison':
+        return `${effect.value} VENENO`
+      case 'resist':
+        return `${effect.value}% RESISTENCIA`
+    }
+  }
+
+  private effectColor(effect: CardEffect): string {
+    if (effect.type === 'damage') return ELEMENT_COLOR[effect.element ?? 'neutral']
+    if (effect.type === 'shield') return '#77aaff'
+    if (effect.type === 'heal') return '#66ee99'
+    if (effect.type === 'poison') return '#99dd55'
+    return '#c9a7d8'
+  }
+
+  private drawCombatEffectIcon(
+    graphics: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    type: CardEffect['type'],
+    color: string,
+  ) {
+    const value = Phaser.Display.Color.HexStringToColor(color).color
+    graphics.fillStyle(value, 1)
+    switch (type) {
+      case 'damage':
+        graphics.fillTriangle(x, y - 6, x - 2, y - 2, x + 2, y - 2)
+        graphics.fillRect(x - 1, y - 2, 2, 5)
+        graphics.fillRect(x - 4, y + 2, 8, 2)
+        graphics.fillRect(x - 1, y + 4, 2, 2)
+        break
+      case 'shield':
+        graphics.fillTriangle(x, y - 6, x - 6, y - 2, x, y + 6)
+        graphics.fillTriangle(x, y - 6, x + 6, y - 2, x, y + 6)
+        break
+      case 'heal':
+        graphics.fillRect(x - 2, y - 6, 4, 12)
+        graphics.fillRect(x - 6, y - 2, 12, 4)
+        break
+      case 'poison':
+        graphics.fillRect(x - 3, y - 6, 6, 10)
+        graphics.fillRect(x - 1, y - 8, 2, 3)
+        break
+      case 'resist':
+        graphics.fillRect(x - 5, y - 4, 10, 2)
+        graphics.fillRect(x - 7, y - 1, 14, 2)
+        graphics.fillRect(x - 5, y + 2, 10, 2)
+        break
+    }
   }
 
   private enableInput() {
     this.attacking = false
+    this.restoreEndTurnButtonLayout()
     this.endTurnBtn.setInteractive({ useHandCursor: true })
-    this.endTurnTxt.setColor('#88cc88')
-    this.endTurnTxt.setText(t('combat.endTurn'))
+    this.endTurnBtn.setFillStyle(0x24472f, 1)
+    this.endTurnBtn.setStrokeStyle(1, 0x66bb77)
+    this.endTurnTxt.setColor('#baf2c4')
+    this.endTurnTxt.setText(t('combat.dieRoll'))
+    for (const card of [...this.handSprites, ...this.slotSprites]) {
+      card?.setEnabled(true)
+    }
   }
 
   private disableInput() {
     this.attacking = true
     this.endTurnBtn.disableInteractive()
+    this.endTurnBtn.setFillStyle(0x20222a, 1)
+    this.endTurnBtn.setStrokeStyle(1, 0x444653)
     this.endTurnTxt.setColor('#666666')
+    for (const card of [...this.handSprites, ...this.slotSprites]) {
+      card?.setEnabled(false)
+    }
+  }
+
+  private restoreEndTurnButtonLayout() {
+    const cx = this.cameras.main.width / 2
+    this.endTurnBtn.setPosition(cx, END_TURN_Y).setDisplaySize(116, 28)
+    this.endTurnTxt.setPosition(cx, END_TURN_Y)
+  }
+
+  private clearPendingDiceUi() {
+    for (const entry of this.dieEntries) {
+      entry.gfx.destroy()
+      entry.backTxt?.destroy()
+      entry.zone.destroy()
+    }
+    this.dieEntries = []
+    this.pickedDieIndices = []
+    this.keptDieIndex = -1
+    this.pendingDiceRolls = []
+    this.pendingDiePlayed = null
+    this.cardEffectDiePhase = 'idle'
+    this.restoreEndTurnButtonLayout()
   }
 
   private onEndTurn() {
-    if (this.attacking) return
+    if (this.cardEffectDiePhase === 'reveal') {
+      this.confirmDieAttack()
+      return
+    }
+    if (this.cardEffectDiePhase !== 'idle' || this.attacking || this.cardAnimating) return
     const played = slottedCards(this.deck)
     if (played.length === 0) return
     this.disableInput()
     AudioSystem.play('attack')
+    this.pendingDiePlayed = played
+    this.rollPendingDice()
+  }
 
+  private rollPendingDice() {
+    if (this.cardEffectDiePhase !== 'idle' || !this.pendingDiePlayed) return
+    this.cardEffectDiePhase = 'rolling'
+    this.endTurnBtn.disableInteractive()
+    this.endTurnTxt.setColor('#666666')
+    this.pendingDiceRolls = rollCardEffectDice(3)
+    this.pickedDieIndices = []
+    this.clearPreviewRow()
+
+    const { width } = this.cameras.main
+    const cx = width / 2
+    const dieY = PREVIEW_Y + 4
+    const xs = [cx - 30, cx, cx + 30]
+    this.previewTxt.setPosition(cx, PREVIEW_Y - 12).setDepth(20)
+    this.previewTxt.setText(t('combat.dieRolling'))
+    AudioSystem.play('dice')
+
+    this.dieEntries = xs.map((x, i) => {
+      const gfx = this.add.graphics().setPosition(x, dieY).setDepth(20)
+      this.drawCardEffectDieFace(gfx, 1)
+      const zone = this.add
+        .zone(x, dieY, 24, 24)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(22)
+      zone.on('pointerdown', () => this.onDieTap(i))
+      return { gfx, backTxt: null, zone }
+    })
+
+    const reducedMotion = preferReducedMotion()
+    this.tweens.add({
+      targets: this.dieEntries.map(e => e.gfx),
+      scaleX: 1.12,
+      scaleY: 1.12,
+      angle: 360,
+      duration: reducedMotion ? 140 : 280,
+      ease: 'Sine.InOut',
+      onComplete: () => {
+        for (const entry of this.dieEntries) {
+          this.drawCardEffectDieBack(entry.gfx)
+          entry.gfx.setScale(1).setAngle(0)
+          entry.backTxt = addPixelText(this, entry.gfx.x, entry.gfx.y, '?', {
+            fontSize: '8px',
+            color: '#b491d4',
+          }).setOrigin(0.5).setDepth(21)
+        }
+        this.cardEffectDiePhase = 'pickTwo'
+        this.previewTxt.setText(t('combat.diePickTwo'))
+      },
+    })
+  }
+
+  private revealDieFace(index: number) {
+    const entry = this.dieEntries[index]
+    const roll = this.pendingDiceRolls[index]
+    if (!entry || !roll) return
+    entry.backTxt?.destroy()
+    entry.backTxt = null
+    this.drawCardEffectDieFace(entry.gfx, roll.face)
+  }
+
+  private onDieTap(index: number) {
+    const roll = this.pendingDiceRolls[index]
+    if (!roll) return
+    if (this.cardEffectDiePhase === 'pickTwo') {
+      if (this.pickedDieIndices.includes(index)) return
+      this.pickedDieIndices.push(index)
+      this.revealDieFace(index)
+      AudioSystem.play('select')
+      if (this.pickedDieIndices.length === 2) {
+        const leftover = this.dieEntries.findIndex((_, i) => !this.pickedDieIndices.includes(i))
+        if (leftover >= 0) this.dieEntries[leftover]!.gfx.setAlpha(0.4)
+        this.cardEffectDiePhase = 'pickOne'
+        this.previewTxt.setText(t('combat.diePickOne'))
+      }
+      return
+    }
+    if (this.cardEffectDiePhase === 'pickOne' || this.cardEffectDiePhase === 'reveal') {
+      if (!this.pickedDieIndices.includes(index)) return
+      const firstSelection = this.cardEffectDiePhase === 'pickOne'
+      this.cardEffectDiePhase = 'reveal'
+      this.keptDieIndex = index
+      AudioSystem.play('select')
+      for (const [i, entry] of this.dieEntries.entries()) {
+        if (!this.pickedDieIndices.includes(i)) {
+          if (firstSelection) this.revealDieFace(i)
+          entry.gfx.setAlpha(0.45).setScale(1)
+        } else if (i === index) {
+          entry.gfx.setAlpha(1).setScale(1.2)
+        } else {
+          entry.gfx.setAlpha(0.45).setScale(1)
+        }
+      }
+      this.previewTxt.setText(t('combat.dieResult', {
+        face: roll.face,
+        multiplier: roll.multiplier,
+      }))
+      if (firstSelection) {
+        this.restoreEndTurnButtonLayout()
+        this.endTurnBtn.setInteractive({ useHandCursor: true })
+        this.endTurnBtn.setFillStyle(0x24472f, 1)
+        this.endTurnBtn.setStrokeStyle(1, 0x66bb77)
+        this.endTurnTxt.setColor('#baf2c4')
+        this.endTurnTxt.setText(t('combat.attack'))
+      }
+    }
+  }
+
+  private confirmDieAttack() {
+    if (this.cardEffectDiePhase !== 'reveal') return
+    const played = this.pendingDiePlayed
+    const roll = this.pendingDiceRolls[this.keptDieIndex]
+    this.clearPendingDiceUi()
+    this.disableInput()
+    if (played && roll) this.resolveRolledPlayerTurn(played, roll.multiplier)
+  }
+
+  private resolveRolledPlayerTurn(
+    played: RunCard[],
+    multiplier: CardEffectMultiplier,
+  ) {
     // Poison tick on enemy at start of our resolve (their start-of-turn already done)
     const hero = toFighter(
       this.state.hp,
@@ -456,21 +1001,31 @@ export class CombatScene extends Phaser.Scene {
       this.state.heroShield,
       this.state.heroPoison,
       this.state.bonusDmgFlat,
+      this.heroCombatResistances(),
     )
     const foe = toFighter(
       this.enemy.hp,
       this.enemy.maxHp,
       this.enemy.shield,
       this.enemy.poison,
+      0,
+      this.enemy.resistances,
     )
 
-    const result = CombatEngine.resolvePlayerTurn(played, this.state, hero, foe)
+    const result = CombatEngine.resolvePlayerTurn(
+      played,
+      this.state,
+      hero,
+      foe,
+      multiplier,
+    )
     this.state.hp = hero.hp
     this.state.heroShield = hero.shield
     this.state.heroPoison = hero.poison
     this.enemy.hp = foe.hp
     this.enemy.shield = foe.shield
     this.enemy.poison = foe.poison
+    this.gainCombatResists(result.applied.resist)
 
     if (result.applied.damage > 0) {
       DamageNumbers.show(this, this.enemyArenaX, ENEMY_ARENA_Y - 48, result.applied.damage, '#ff4444')
@@ -494,6 +1049,8 @@ export class CombatScene extends Phaser.Scene {
       return
     }
 
+    this.tryEcho()
+
     if (this.enemy.skill === 'split') {
       this.enemy.bonusDef += 2
     }
@@ -509,6 +1066,7 @@ export class CombatScene extends Phaser.Scene {
       maxHp: this.enemy.maxHp,
       shield: this.enemy.shield,
       poison: this.enemy.poison,
+      resistances: this.enemy.resistances,
     }
     const pDmg = CombatEngine.startTurnPoison(enemyActor)
     this.enemy.hp = enemyActor.hp
@@ -522,6 +1080,8 @@ export class CombatScene extends Phaser.Scene {
       return
     }
 
+    this.tryEcho()
+
     const choice = EnemyAI.choosePlays(
       this.enemyDeck.hand,
       this.enemy.actionSlots,
@@ -530,12 +1090,14 @@ export class CombatScene extends Phaser.Scene {
         maxHp: this.enemy.maxHp,
         shield: this.enemy.shield,
         poison: this.enemy.poison,
+        resistances: this.enemy.resistances,
       },
       {
         hp: this.state.hp,
         maxHp: this.state.maxHp,
         shield: this.state.heroShield,
         poison: this.state.heroPoison,
+        resistances: this.heroCombatResistances(),
       },
     )
 
@@ -550,12 +1112,16 @@ export class CombatScene extends Phaser.Scene {
         this.state.maxHp,
         this.state.heroShield,
         this.state.heroPoison,
+        0,
+        this.heroCombatResistances(),
       )
       const foe = toFighter(
         this.enemy.hp,
         this.enemy.maxHp,
         this.enemy.shield,
         this.enemy.poison,
+        0,
+        this.enemy.resistances,
       )
       const result = CombatEngine.resolveTurn(choice, foe, hero)
 
@@ -597,6 +1163,7 @@ export class CombatScene extends Phaser.Scene {
         maxHp: this.state.maxHp,
         shield: this.state.heroShield,
         poison: this.state.heroPoison,
+        resistances: this.state.heroResistances,
       }
       const hPoison = CombatEngine.startTurnPoison(heroActor)
       this.state.hp = heroActor.hp
@@ -613,7 +1180,6 @@ export class CombatScene extends Phaser.Scene {
       }
 
       SaveSystem.save('quicksave', this.state)
-      this.previewEnemyIntent()
       this.enableInput()
     })
   }
@@ -638,7 +1204,7 @@ export class CombatScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(50)
 
     this.tweens.add({
-      targets: [this.enemyGfx, this.enemyNameText, this.enemyIntentTxt, koTxt],
+      targets: [this.enemyGfx, koTxt],
       alpha: 0,
       y: '-=24',
       duration: 320,
@@ -669,17 +1235,34 @@ export class CombatScene extends Phaser.Scene {
     })
   }
 
+  /** 'echo' skill: first time the enemy drops to 50% HP it summons a copy. */
+  private tryEcho() {
+    const e = this.enemy
+    if (e.skill !== 'echo' || e.echoUsed || !e.alive) return
+    if (e.hp > e.maxHp / 2) return
+    e.echoUsed = true
+    const kind = this.state.pendingNodeKind ?? 'combat'
+    const copy = Enemy.forNode(kind, this.state.floor, this.state.seed, this.wave.length + 100)
+    copy.maxHp = e.maxHp
+    copy.hp = Math.max(1, Math.floor(e.maxHp / 2))
+    copy.echoUsed = true
+    this.wave.push(copy)
+    this.redrawEnemyQueue()
+    AudioSystem.play('ui')
+    const txt = addPixelText(this, this.enemyArenaX, ENEMY_ARENA_Y - 62, t('combat.echo'), {
+      fontSize: '8px',
+      color: '#c9a7d8',
+    }).setOrigin(0.5).setDepth(50)
+    this.tweens.add({ targets: txt, alpha: 0, y: '-=12', duration: 900, onComplete: () => txt.destroy() })
+  }
+
   private spawnNextEnemy() {
     this.enemyDeck = createCombatDeck(this.enemy.deckDefs, this.enemy.actionSlots)
     fillHand(this.enemyDeck)
     this.enemyGfx.destroy()
     this.enemyGfx = this.drawCharacter(this.enemyArenaX, ENEMY_ARENA_Y, ENEMY_SCALE, 0xcc6666)
-    this.enemyNameText.setText(enemyName(this.enemy.templateId))
-    this.enemyNameText.setAlpha(1)
-    this.enemyIntentTxt.setAlpha(1)
     this.bindEnemyBars()
     this.redrawEnemyQueue()
-    this.previewEnemyIntent()
     this.enableInput()
   }
 

@@ -7,7 +7,7 @@ import { AudioSystem } from '../systems/AudioSystem'
 export function addBackButton(
   scene: Phaser.Scene,
   onBack: () => void,
-  opts: { x?: number; y?: number; labelKey?: 'ui.back' | 'combat.esc' } = {},
+  opts: { x?: number; y?: number; labelKey?: 'ui.back' } = {},
 ) {
   const key = opts.labelKey ?? 'ui.back'
   const label = t(key)

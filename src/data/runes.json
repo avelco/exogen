@@ -1,41 +1,72 @@
 [
   {
     "id": "rune_die_I",
-    "name": "Runa dado I",
+    "name": "Amuleto vital I",
     "rarity": "common",
-    "mods": [{ "stat": "diceAtk", "value": 1 }]
+    "mods": [
+      {
+        "stat": "maxHp",
+        "value": 2
+      }
+    ]
   },
   {
     "id": "rune_reroll_I",
-    "name": "Runa reroll I",
+    "name": "Amuleto de impacto I",
     "rarity": "common",
-    "mods": [{ "stat": "rerollAtk", "value": 1 }]
+    "mods": [
+      {
+        "stat": "dmgFlat",
+        "value": 1
+      }
+    ]
   },
   {
     "id": "rune_die_II",
-    "name": "Runa dado II",
+    "name": "Amuleto vital II",
     "rarity": "rare",
-    "mods": [{ "stat": "diceAtk", "value": 1 }]
+    "mods": [
+      {
+        "stat": "maxHp",
+        "value": 4
+      }
+    ]
   },
   {
     "id": "rune_reroll_II",
-    "name": "Runa reroll II",
+    "name": "Amuleto de impacto II",
     "rarity": "rare",
-    "mods": [{ "stat": "rerollAtk", "value": 2 }]
+    "mods": [
+      {
+        "stat": "dmgFlat",
+        "value": 2
+      }
+    ]
   },
   {
     "id": "rune_edge",
-    "name": "Runa filo",
+    "name": "Amuleto de filo",
     "rarity": "rare",
-    "mods": [{ "stat": "dmgFlat", "value": 1 }]
+    "mods": [
+      {
+        "stat": "dmgFlat",
+        "value": 1
+      }
+    ]
   },
   {
     "id": "rune_fury",
-    "name": "Runa furia",
+    "name": "Amuleto de furia",
     "rarity": "rare",
     "mods": [
-      { "stat": "diceAtk", "value": 1 },
-      { "stat": "dmgFlat", "value": 1 }
+      {
+        "stat": "maxHp",
+        "value": 2
+      },
+      {
+        "stat": "dmgFlat",
+        "value": 1
+      }
     ]
   }
 ]

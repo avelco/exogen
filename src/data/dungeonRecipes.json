@@ -2,10 +2,10 @@
   "floors": [
     {
       "floor": 1,
-      "gridW": 4,
-      "gridH": 5,
-      "rooms": { "combat": 4, "elite": 1, "shop": 1, "rest": 1, "event": 0 },
-      "loops": 1
+      "gridW": 3,
+      "gridH": 4,
+      "rooms": { "combat": 3, "elite": 0, "shop": 0, "rest": 0, "event": 0 },
+      "loops": 0
     },
     {
       "floor": 2,

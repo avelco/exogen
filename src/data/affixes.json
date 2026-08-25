@@ -9,15 +9,27 @@
     { "id": "def_m", "tier": "blue", "stat": "defFlat", "value": 2 },
     { "id": "dmg_m", "tier": "blue", "stat": "dmgFlat", "value": 2 },
     { "id": "souls_m", "tier": "blue", "stat": "startGold", "value": 8 },
+    { "id": "resist_earth_m", "tier": "blue", "stat": "resist", "value": 3, "element": "earth" },
+    { "id": "resist_fire_m", "tier": "blue", "stat": "resist", "value": 3, "element": "fire" },
+    { "id": "resist_air_m", "tier": "blue", "stat": "resist", "value": 3, "element": "air" },
+    { "id": "resist_water_m", "tier": "blue", "stat": "resist", "value": 3, "element": "water" },
+    { "id": "resist_neutral_m", "tier": "blue", "stat": "resist", "value": 3, "element": "neutral" },
 
     { "id": "hp_unique", "tier": "purple", "stat": "maxHp", "value": 7 },
     { "id": "def_unique", "tier": "purple", "stat": "defFlat", "value": 3 },
     { "id": "dmg_unique", "tier": "purple", "stat": "dmgFlat", "value": 3 },
-    { "id": "reroll_unique", "tier": "purple", "stat": "rerollAtk", "value": 1 },
+    { "id": "poison_unique", "tier": "purple", "stat": "poisonAmp", "value": 1 },
+    { "id": "edmg_earth_u", "tier": "purple", "stat": "elementDmg", "value": 1, "element": "earth" },
+    { "id": "edmg_fire_u", "tier": "purple", "stat": "elementDmg", "value": 1, "element": "fire" },
+    { "id": "edmg_air_u", "tier": "purple", "stat": "elementDmg", "value": 1, "element": "air" },
+    { "id": "edmg_water_u", "tier": "purple", "stat": "elementDmg", "value": 1, "element": "water" },
+    { "id": "edmg_neutral_u", "tier": "purple", "stat": "elementDmg", "value": 1, "element": "neutral" },
 
     { "id": "hp_legend", "tier": "gold", "stat": "maxHp", "value": 10 },
     { "id": "dmg_legend", "tier": "gold", "stat": "dmgFlat", "value": 4 },
-    { "id": "dice_legend", "tier": "gold", "stat": "diceAtk", "value": 1 },
-    { "id": "souls_legend", "tier": "gold", "stat": "startGold", "value": 20 }
+    { "id": "souls_legend", "tier": "gold", "stat": "startGold", "value": 20 },
+    { "id": "poison_legend", "tier": "gold", "stat": "poisonAmp", "value": 2 },
+    { "id": "resist_all_legend", "tier": "gold", "stat": "resist", "value": 5, "element": "all" },
+    { "id": "edmg_all_legend", "tier": "gold", "stat": "elementDmg", "value": 1, "element": "all" }
   ]
 }
