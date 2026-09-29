@@ -14,16 +14,16 @@ services:
       - CHOKIDAR_USEPOLLING=true
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.dd-dev-http.rule=Host(`dd.surfingbird.space`)"
-      - "traefik.http.routers.dd-dev-http.entrypoints=web"
-      - "traefik.http.routers.dd-dev-http.middlewares=redirect-to-https-dd-dev"
-      - "traefik.http.routers.dd-dev.rule=Host(`dd.surfingbird.space`)"
-      - "traefik.http.routers.dd-dev.entrypoints=websecure"
-      - "traefik.http.routers.dd-dev.tls=true"
-      - "traefik.http.routers.dd-dev.tls.certresolver=myresolver"
-      - "traefik.http.services.dd-dev.loadbalancer.server.port=5173"
-      - "traefik.http.middlewares.redirect-to-https-dd-dev.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.redirect-to-https-dd-dev.redirectscheme.permanent=true"
+      - "traefik.http.routers.ex-dev-http.rule=Host(`ex.surfingbird.space`)"
+      - "traefik.http.routers.ex-dev-http.entrypoints=web"
+      - "traefik.http.routers.ex-dev-http.middlewares=redirect-to-https-ex-dev"
+      - "traefik.http.routers.ex-dev.rule=Host(`ex.surfingbird.space`)"
+      - "traefik.http.routers.ex-dev.entrypoints=websecure"
+      - "traefik.http.routers.ex-dev.tls=true"
+      - "traefik.http.routers.ex-dev.tls.certresolver=myresolver"
+      - "traefik.http.services.ex-dev.loadbalancer.server.port=5173"
+      - "traefik.http.middlewares.redirect-to-https-ex-dev.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https-ex-dev.redirectscheme.permanent=true"
     networks:
       - service_network
 

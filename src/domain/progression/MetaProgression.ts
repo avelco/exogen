@@ -78,7 +78,19 @@ export interface MetaSave {
   actionSlots: number
 }
 
-const META_KEY = 'dnd_meta_v1'
+const META_KEY = 'exogen_meta_v1'
+const LEGACY_META_KEY = 'dnd_meta_v1' // pre-rename (dice-and-depths)
+
+/** One-time key rename: adopts the legacy meta save under the new key. */
+function readMetaRaw(): string | null {
+  const raw = localStorage.getItem(META_KEY)
+  if (raw !== null) return raw
+  const legacy = localStorage.getItem(LEGACY_META_KEY)
+  if (legacy === null) return null
+  localStorage.setItem(META_KEY, legacy)
+  localStorage.removeItem(LEGACY_META_KEY)
+  return legacy
+}
 
 function emptyGearLoadout(): GearLoadoutMap {
   return { hat: null, cape: null, belt: null, ring: null, boots: null }
@@ -317,7 +329,7 @@ function normalizeInventory(raw: unknown, loadout: MetaLoadout): MetaInventory {
 
 export class MetaProgression {
   static load(): MetaSave {
-    const raw = localStorage.getItem(META_KEY)
+    const raw = readMetaRaw()
     if (!raw) {
       const meta = defaultMeta()
       setLocale(meta.locale)
@@ -387,6 +399,7 @@ export class MetaProgression {
 
   static save(meta: MetaSave) {
     localStorage.setItem(META_KEY, JSON.stringify(meta))
+    localStorage.removeItem(LEGACY_META_KEY)
   }
 
   static applyStartBonuses(state: import('./RunState').RunState) {

@@ -8,7 +8,24 @@ import { MetaProgression } from '../domain/progression/MetaProgression'
 import { DEFAULT_ACTION_SLOTS } from '../domain/cards/Deck'
 import { normalizeResistances, zeroResistances } from '../domain/combat/Elements'
 
-const PREFIX = 'dnd_save_'
+const PREFIX = 'exogen_save_'
+const LEGACY_PREFIX = 'dnd_save_' // pre-rename (dice-and-depths)
+
+/** One-time key rename: moves legacy saves under the new prefix. Idempotent. */
+function migrateLegacyKeys(): void {
+  const legacy: string[] = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (k?.startsWith(LEGACY_PREFIX)) legacy.push(k)
+  }
+  for (const k of legacy) {
+    const target = PREFIX + k.slice(LEGACY_PREFIX.length)
+    if (localStorage.getItem(target) === null) {
+      localStorage.setItem(target, localStorage.getItem(k)!)
+    }
+    localStorage.removeItem(k)
+  }
+}
 
 export interface SaveSlot {
   key: string
@@ -110,10 +127,12 @@ function deserialize(data: Record<string, unknown>): RunState {
 
 export class SaveSystem {
   static save(key: string, state: RunState): void {
+    migrateLegacyKeys()
     localStorage.setItem(PREFIX + key, JSON.stringify(serialize(state)))
   }
 
   static load(key: string): RunState | null {
+    migrateLegacyKeys()
     const raw = localStorage.getItem(PREFIX + key)
     if (!raw) return null
     try {
@@ -124,6 +143,7 @@ export class SaveSystem {
   }
 
   static list(): SaveSlot[] {
+    migrateLegacyKeys()
     const slots: SaveSlot[] = []
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i)
@@ -145,6 +165,7 @@ export class SaveSystem {
   }
 
   static delete(key: string): void {
+    migrateLegacyKeys()
     localStorage.removeItem(PREFIX + key)
   }
 

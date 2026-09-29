@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**dice-and-depths** ("Exogen") is a Phaser 4 + TypeScript sci-fi dungeon-crawler card game. The canvas is 270×480 portrait pixel-art (`pixelArt: true`, FIT scaling) — all coordinates and font sizes assume this tiny resolution. Content and balance live in `src/data/*.json`; game logic is pure TypeScript in `src/domain/`; Phaser is UI-only.
+**Exogen** is a Phaser 4 + TypeScript sci-fi dungeon-crawler card game. The canvas is 270×480 portrait pixel-art (`pixelArt: true`, FIT scaling) — all coordinates and font sizes assume this tiny resolution. Content and balance live in `src/data/*.json`; game logic is pure TypeScript in `src/domain/`; Phaser is UI-only.
 
 The canonical setting is defined in [`docs/EXOGEN_WORLD_BIBLE.md`](docs/EXOGEN_WORLD_BIBLE.md). Player-facing content must respect its canon hierarchy, the year 3874 / 233 d.O., Sol Civilis terminology, bidirectional portals, Exogenous Drift, context dependence, and the hidden posthuman origin of the network. Do not reveal reserved truths directly in early in-world material.
 
@@ -27,7 +27,7 @@ graph LR
 
 **State flow:**
 - `RunState` (`src/domain/progression/RunState.ts`, plain-field class) is the single run save object, passed between scenes via `scene.start(name, { runState })` and read with `getRunState()` (`src/debug.ts`).
-- `SaveSystem` (`src/systems/SaveSystem.ts`) serializes to `localStorage` (prefix `dnd_save_`, versioned, currently `version: 9`) with hand-written legacy migrations. **Any new persisted RunState field needs serialize + deserialize + version updates.**
+- `SaveSystem` (`src/systems/SaveSystem.ts`) serializes to `localStorage` (prefix `exogen_save_`, versioned, currently `version: 9`) with hand-written legacy migrations; legacy `dnd_save_*`/`dnd_meta_v1` keys (pre-rename, dice-and-depths) are moved over on first access. **Any new persisted RunState field needs serialize + deserialize + version updates.**
 - `MetaProgression` owns cross-run meta (gold, decks, collection, skill tree), loaded once in `main.ts`.
 
 **Combat flow:** `CombatScene` mirrors mutable state (`this.enemy`, `this.state.hp/heroShield/heroPoison`), converts to `CombatFighter` via `toFighter()`, calls `CombatEngine.resolvePlayerTurn(...)`, copies results back. All card math has exactly one path — `previewCards`/`previewCardsVs`/`resolveCardPlays` in `src/domain/cards/CardEffects.ts` — so preview cannot diverge from application.
@@ -58,7 +58,7 @@ Dead leftovers — do NOT build on: `src/domain/dice/`, `src/systems/RngService.
 - `pnpm build` — `tsc && vite build`; **this is also the typecheck** (tsc `noEmit`, no separate typecheck script)
 - `pnpm test:watch` — vitest watch mode
 - `node scripts/balance-sim.mjs [runs]` — Monte Carlo pacing check (optional run count, default 200)
-- `docker-compose up dev` — container dev (8080→5173, Traefik at `dd.surfingbird.space`, needs external `service_network`; vite `allowedHosts` is already set)
+- `docker-compose up dev` — container dev (8080→5173, Traefik at `ex.surfingbird.space`, needs external `service_network`; vite `allowedHosts` is already set)
 
 **No lint/formatter is configured — don't invent one.**
 

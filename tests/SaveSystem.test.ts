@@ -44,11 +44,37 @@ describe('SaveSystem', () => {
       version: 5,
       savedAt: Date.now(),
     }
-    localStorage.setItem('dnd_save_legacy', JSON.stringify(raw))
+    localStorage.setItem('exogen_save_legacy', JSON.stringify(raw))
     const loaded = SaveSystem.load('legacy')
     expect(loaded).not.toBeNull()
     expect(loaded!.deckDefs.length).toBeGreaterThan(0)
     expect(loaded!.heroResistances).toEqual(zeroResistances())
+  })
+
+  it('moves legacy dnd_save_ keys to the exogen_save_ prefix', () => {
+    const state = makeState()
+    state.floor = 4
+    localStorage.setItem(
+      'dnd_save_quicksave',
+      JSON.stringify({
+        floor: 4,
+        coins: 5,
+        maxHp: 30,
+        hp: 22,
+        seed: 7,
+        passives: [],
+        deckDefs: ['strike', 'bash'],
+        savedAt: Date.now(),
+        version: 9,
+      }),
+    )
+    expect(SaveSystem.load('quicksave')!.floor).toBe(4)
+    expect(localStorage.getItem('dnd_save_quicksave')).toBeNull()
+    expect(localStorage.getItem('exogen_save_quicksave')).not.toBeNull()
+    expect(SaveSystem.list().map(s => s.key)).toContain('quicksave')
+    SaveSystem.save('slot_1', state)
+    expect(localStorage.getItem('dnd_save_slot_1')).toBeNull()
+    expect(SaveSystem.loadFromSlot(1)!.floor).toBe(4)
   })
 })
 
@@ -62,5 +88,23 @@ describe('MetaProgression cards', () => {
     )
     expect(MetaProgression.hasOpenedStarterPacks()).toBe(true)
     expect(MetaProgression.getActiveDeck()).toHaveLength(10)
+  })
+
+  it('adopts the legacy dnd_meta_v1 key and renames it', () => {
+    localStorage.setItem(
+      'dnd_meta_v1',
+      JSON.stringify({
+        gold: 42,
+        campaignFloor: 1,
+        tutorialDone: true,
+        starterPacksOpened: true,
+        cardCollection: { strike: 2 },
+        activeDeck: Array.from({ length: 10 }, () => 'strike'),
+      }),
+    )
+    expect(MetaProgression.load().gold).toBe(42)
+    expect(localStorage.getItem('dnd_meta_v1')).toBeNull()
+    expect(localStorage.getItem('exogen_meta_v1')).not.toBeNull()
+    expect(MetaProgression.load().gold).toBe(42)
   })
 })

@@ -124,7 +124,7 @@ describe('cardCollection migration', () => {
 
   it('migrates legacy string[] collection to counts', () => {
     localStorage.setItem(
-      'dnd_meta_v1',
+      'exogen_meta_v1',
       JSON.stringify({
         gold: 10,
         campaignFloor: 1,

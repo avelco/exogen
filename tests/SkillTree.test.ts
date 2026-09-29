@@ -153,7 +153,7 @@ describe('Tree effects on run', () => {
 
   it('migrates orphan tree node ids and refunds points', () => {
     localStorage.setItem(
-      'dnd_meta_v1',
+      'exogen_meta_v1',
       JSON.stringify({
         gold: 0,
         campaignFloor: 3,
