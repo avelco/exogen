@@ -73,7 +73,7 @@ export class MenuScene extends Phaser.Scene {
     const unlock = () => AudioSystem.unlock()
     this.input.on('pointerdown', unlock)
 
-    addPixelText(this, cx, 36, 'EXPUGNATIO', {
+    addPixelText(this, cx, 36, 'EXOGEN', {
       fontSize: '16px',
       color: '#ffffff',
     }).setOrigin(0.5)

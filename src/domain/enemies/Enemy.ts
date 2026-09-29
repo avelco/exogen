@@ -24,7 +24,7 @@ interface EnemyTemplate {
 
 const TEMPLATES = enemiesData as EnemyTemplate[]
 
-/** Difficulty spikes: depth 100 ("Exudación") and 300 ("Desbordamiento"). */
+/** Difficulty spikes: sector 100 (immune response) and 300 (critical Drift). */
 export const THRESHOLD_VOID = 100
 export const THRESHOLD_PHASE = 300
 

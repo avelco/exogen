@@ -7,6 +7,7 @@ import { enableTouchTarget } from '../ui/touchTarget'
 import { AudioSystem } from '../systems/AudioSystem'
 import { SaveSystem } from '../systems/SaveSystem'
 import { convertRunSoulsToGold } from '../domain/progression/advanceDepth'
+import { MAX_CAMPAIGN_FLOOR } from '../domain/map/MazeGenerator'
 
 interface GameOverData {
   runState?: import('../domain/progression/RunState').RunState
@@ -36,7 +37,7 @@ export class GameOverScene extends Phaser.Scene {
     if (victory) {
       const depth = rs?.floor ?? 1
       const subKey =
-        depth >= 100 ? 'gameover.victoryCampaign' : 'gameover.victorySub'
+        depth >= MAX_CAMPAIGN_FLOOR ? 'gameover.victoryCampaign' : 'gameover.victorySub'
       addPixelText(this, cx, 48, t('gameover.victory'), {
         fontSize: '14px', color: '#ffcc44', fontStyle: 'bold',
       }).setOrigin(0.5)

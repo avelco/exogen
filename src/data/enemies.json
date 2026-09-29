@@ -1,7 +1,7 @@
 [
   {
     "id": "slime",
-    "name": "Engendro viscoso",
+    "name": "Coágulo de ancla",
     "roles": [
       "combat"
     ],
@@ -19,7 +19,7 @@
   },
   {
     "id": "skeleton",
-    "name": "Operario oxidado",
+    "name": "Operario asimilado",
     "roles": [
       "combat"
     ],
@@ -37,7 +37,7 @@
   },
   {
     "id": "bandit",
-    "name": "Gobelin saqueador",
+    "name": "Célula saqueadora",
     "roles": [
       "elite"
     ],
@@ -55,7 +55,7 @@
   },
   {
     "id": "spectre",
-    "name": "Imitador",
+    "name": "Eco mimético",
     "roles": [
       "elite"
     ],
@@ -73,7 +73,7 @@
   },
   {
     "id": "golem",
-    "name": "Guardián de la Costura",
+    "name": "Custodio del umbral",
     "roles": [
       "boss"
     ],
@@ -91,7 +91,7 @@
   },
   {
     "id": "rust_cultist",
-    "name": "Insito de Terra Secunda",
+    "name": "Vector de esporas",
     "roles": [
       "combat"
     ],
@@ -109,7 +109,7 @@
   },
   {
     "id": "ferro_husk",
-    "name": "Cadavera Acta ferrada",
+    "name": "Armazón asimilado",
     "roles": [
       "combat"
     ],
@@ -127,7 +127,7 @@
   },
   {
     "id": "susurri_monk",
-    "name": "Campanario exaltado",
+    "name": "Cantor sináptico",
     "roles": [
       "elite"
     ],
@@ -145,7 +145,7 @@
   },
   {
     "id": "alpha_reaver",
-    "name": "Orco alfa",
+    "name": "Respuesta alfa",
     "roles": [
       "elite"
     ],
@@ -163,7 +163,7 @@
   },
   {
     "id": "gate_keeper",
-    "name": "Guardián del Estrato",
+    "name": "Bastión inmunitario",
     "roles": [
       "boss"
     ],
@@ -181,7 +181,7 @@
   },
   {
     "id": "echo_twin",
-    "name": "Imitador gemelo",
+    "name": "Doble recursivo",
     "roles": [
       "combat",
       "elite"
@@ -200,7 +200,7 @@
   },
   {
     "id": "void_warden",
-    "name": "Guardián del Núcleo",
+    "name": "Nódulo soberano",
     "roles": [
       "boss"
     ],

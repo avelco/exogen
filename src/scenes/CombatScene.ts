@@ -206,7 +206,7 @@ export class CombatScene extends Phaser.Scene {
     // Start-of-combat poison tick (none yet)
     this.applyHeroShieldBar()
 
-    // Depth 300+: ambient phase leak poisons the hero every combat.
+    // Sector 300+: critical Exogenous Drift contaminates the hero every combat.
     if (this.state.floor >= 300) {
       this.state.heroPoison += 2
       this.updateStatusTxt()
@@ -416,8 +416,8 @@ export class CombatScene extends Phaser.Scene {
 
   private updateStatusTxt() {
     const parts: string[] = []
-    if (this.state.heroPoison > 0) parts.push(`P${this.state.heroPoison}`)
-    if (this.enemy.poison > 0) parts.push(`eP${this.enemy.poison}`)
+    if (this.state.heroPoison > 0) parts.push(`C${this.state.heroPoison}`)
+    if (this.enemy.poison > 0) parts.push(`eC${this.enemy.poison}`)
     this.statusTxt.setText(parts.join(' · '))
   }
 
@@ -765,7 +765,7 @@ export class CombatScene extends Phaser.Scene {
       case 'heal':
         return `${effect.value} CURACIÓN`
       case 'poison':
-        return `${effect.value} VENENO`
+        return `${effect.value} CONTAM.`
       case 'resist':
         return `${effect.value}% RESISTENCIA`
     }

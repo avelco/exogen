@@ -645,7 +645,7 @@ export class PackOpenScene extends Phaser.Scene {
       case 'heal':
         return `${effect.value} CURACIÓN`
       case 'poison':
-        return `${effect.value} VENENO`
+        return `${effect.value} CONTAM.`
       case 'resist':
         return `${effect.value}% RESIST.`
     }

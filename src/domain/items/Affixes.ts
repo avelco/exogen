@@ -69,7 +69,7 @@ export function formatAffix(affix: AffixDef): string {
     case 'startGold':
       return formatMod({ stat: affix.stat, value: affix.value })
     case 'poisonAmp':
-      return `${sign}${affix.value} ${tKey('card.effect.poison', 'VENENO')}`
+      return `${sign}${affix.value} ${tKey('card.effect.poison', 'CONTAM.')}`
     case 'resist': {
       const el = affix.element ?? 'all'
       return `${sign}${affix.value}% R.${elementLabel(el)}`

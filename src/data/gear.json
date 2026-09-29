@@ -1,7 +1,7 @@
 [
   {
     "id": "hat_cloth",
-    "name": "Capucha remendada",
+    "name": "Casco de presión",
     "slot": "hat",
     "rarity": "common",
     "mods": [
@@ -13,7 +13,7 @@
   },
   {
     "id": "hat_iron",
-    "name": "Casco cornudo",
+    "name": "Casco Pyloclasta",
     "slot": "hat",
     "rarity": "rare",
     "mods": [
@@ -25,7 +25,7 @@
   },
   {
     "id": "hat_crown",
-    "name": "Tiara Primi",
+    "name": "Corona de correspondencia",
     "slot": "hat",
     "rarity": "legendary",
     "mods": [
@@ -37,7 +37,7 @@
   },
   {
     "id": "cape_rag",
-    "name": "Harapos de refugiado",
+    "name": "Manto térmico",
     "slot": "cape",
     "rarity": "common",
     "mods": [
@@ -49,7 +49,7 @@
   },
   {
     "id": "cape_guard",
-    "name": "Capa de custodio",
+    "name": "Placas de tránsito",
     "slot": "cape",
     "rarity": "rare",
     "mods": [
@@ -61,7 +61,7 @@
   },
   {
     "id": "cape_void",
-    "name": "Manto de la Fosa",
+    "name": "Membrana de Nadir",
     "slot": "cape",
     "rarity": "legendary",
     "mods": [
@@ -73,7 +73,7 @@
   },
   {
     "id": "belt_rope",
-    "name": "Cinturón de cuerda",
+    "name": "Arnés de campaña",
     "slot": "belt",
     "rarity": "common",
     "mods": [
@@ -85,7 +85,7 @@
   },
   {
     "id": "belt_plated",
-    "name": "Cinturón blindado",
+    "name": "Arnés de anclaje",
     "slot": "belt",
     "rarity": "rare",
     "mods": [
@@ -97,7 +97,7 @@
   },
   {
     "id": "belt_orichalcum",
-    "name": "Cinturón de aleación Primi",
+    "name": "Arnés axiomático",
     "slot": "belt",
     "rarity": "legendary",
     "mods": [
@@ -109,7 +109,7 @@
   },
   {
     "id": "ring_copper",
-    "name": "Anillo conductor",
+    "name": "Interfaz conductora",
     "slot": "ring",
     "rarity": "common",
     "mods": [
@@ -121,7 +121,7 @@
   },
   {
     "id": "ring_ruby",
-    "name": "Anillo del Venator",
+    "name": "Interfaz Pyloclasta",
     "slot": "ring",
     "rarity": "rare",
     "mods": [
@@ -133,7 +133,7 @@
   },
   {
     "id": "ring_eclipse",
-    "name": "Anillo eclipse",
+    "name": "Interfaz Umbra",
     "slot": "ring",
     "rarity": "legendary",
     "mods": [
@@ -145,7 +145,7 @@
   },
   {
     "id": "boots_worn",
-    "name": "Botas remendadas",
+    "name": "Botas de presión",
     "slot": "boots",
     "rarity": "common",
     "mods": [
@@ -157,7 +157,7 @@
   },
   {
     "id": "boots_merchant",
-    "name": "Botas de Sereia",
+    "name": "Botas de Sustento",
     "slot": "boots",
     "rarity": "rare",
     "mods": [
@@ -169,7 +169,7 @@
   },
   {
     "id": "boots_courier",
-    "name": "Botas de correo Vulpini",
+    "name": "Botas de primer cruce",
     "slot": "boots",
     "rarity": "legendary",
     "mods": [

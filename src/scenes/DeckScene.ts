@@ -8,6 +8,11 @@ import { MetaProgression } from '../domain/progression/MetaProgression'
 import { DECK_SIZE } from '../domain/cards/Packs'
 import { MAX_ACTION_SLOTS } from '../domain/cards/Deck'
 import {
+  addDeckCard,
+  createDeckDraft,
+  removeDeckCard,
+} from '../domain/cards/DeckBuilder'
+import {
   cardDef,
   cardRarityDef,
   effectsOf,
@@ -20,6 +25,8 @@ import { CardSprite } from '../ui/CardSprite'
 
 interface DeckSceneData {
   fromEndRun?: boolean
+  deckDraft?: string[]
+  collectionPage?: number
 }
 
 interface SelectedCard {
@@ -71,8 +78,12 @@ export class DeckScene extends Phaser.Scene {
     const { width, height } = this.cameras.main
     const cx = width / 2
 
-    this.deck = MetaProgression.getActiveDeck()
+    this.deck = createDeckDraft(
+      MetaProgression.getActiveDeck(),
+      data.deckDraft,
+    )
     this.collection = MetaProgression.getCardCollection()
+    this.collectionPage = data.collectionPage ?? 0
     this.selected = null
     this.cardViews = []
 
@@ -329,23 +340,33 @@ export class DeckScene extends Phaser.Scene {
   private applySelectedAction() {
     if (!this.selected) return
     if (this.selected.source === 'deck') {
-      this.deck.splice(this.selected.index, 1)
+      this.deck = removeDeckCard(this.deck, this.selected.index)
     } else {
-      if (this.deck.length >= DECK_SIZE) {
+      const next = addDeckCard(this.deck, this.selected.id, DECK_SIZE)
+      if (!next) {
         this.statusTxt.setText(t('deck.full'))
         return
       }
-      this.deck.push(this.selected.id)
+      this.deck = next
     }
     AudioSystem.play('select')
-    this.scene.restart(this.scene.settings.data)
+    this.restartWithDraft()
   }
 
   private changePage(direction: number, pageCount: number) {
     this.collectionPage =
       (this.collectionPage + direction + pageCount) % pageCount
     AudioSystem.play('ui')
-    this.scene.restart(this.scene.settings.data)
+    this.restartWithDraft()
+  }
+
+  private restartWithDraft() {
+    const data = (this.scene.settings.data ?? {}) as DeckSceneData
+    this.scene.restart({
+      ...data,
+      deckDraft: [...this.deck],
+      collectionPage: this.collectionPage,
+    })
   }
 
   private collectionExtras(): Array<{ id: string; free: number }> {

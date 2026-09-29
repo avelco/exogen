@@ -9,7 +9,7 @@ import { t } from './i18n/I18n'
 export function renderDebugHeader(scene: Phaser.Scene, rs: RunState) {
   syncRunStateDerived(rs)
   const gold = MetaProgression.getGold()
-  const header = `P${rs.floor} | ${t('player.name')} | HP ${rs.hp}/${rs.maxHp} | ${rs.coins}${t('ui.lootAbbr')} | ${gold}g | S${rs.actionSlots}`
+  const header = `S${rs.floor} | ${t('player.name')} | HP ${rs.hp}/${rs.maxHp} | ${rs.coins}${t('ui.lootAbbr')} | ${gold}a | R${rs.actionSlots}`
   addPixelText(scene, 4, 2, header, {
     fontSize: '8px',
     color: '#88ff88',

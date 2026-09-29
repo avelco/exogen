@@ -1,8 +1,8 @@
 [
   {
     "id": "vampiric",
-    "name": "Vampírico",
-    "description": "Cura 1 HP al matar"
+    "name": "Reciclaje vital",
+    "description": "Repara 1 HP al neutralizar"
   },
   {
     "id": "heavy_hit",
@@ -11,12 +11,12 @@
   },
   {
     "id": "merchant_friend",
-    "name": "Amigo del mercader",
-    "description": "+20% núcleos al convertir botín"
+    "name": "Prioridad de Sustento",
+    "description": "+20% anclas al convertir suministros"
   },
   {
     "id": "second_wind",
     "name": "Segundo aliento",
-    "description": "Una vez por piso: cura 5 bajo 50% HP"
+    "description": "Una vez por sector: repara 5 bajo 50% HP"
   }
 ]

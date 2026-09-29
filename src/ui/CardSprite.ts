@@ -19,7 +19,7 @@ export type CardSpriteVariant = 'standard' | 'compact' | 'selected'
 
 const EFFECT_STYLE: Record<string, { label: string; color: string }> = {
   damage: { label: 'ATK', color: '#ff7777' },
-  poison: { label: 'VEN', color: '#99dd55' },
+  poison: { label: 'CON', color: '#99dd55' },
   shield: { label: 'ESC', color: '#77aaff' },
   heal: { label: 'CUR', color: '#66ee99' },
 }
@@ -307,7 +307,7 @@ export class CardSprite extends Phaser.GameObjects.Container {
       case 'heal':
         return `${effect.value} CURA`
       case 'poison':
-        return `${effect.value} VENENO`
+        return `${effect.value} CONTAM.`
       case 'resist':
         return `${effect.value}% RESIST.`
       default:

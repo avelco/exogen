@@ -1,7 +1,7 @@
 [
   {
     "id": "rune_die_I",
-    "name": "Amuleto vital I",
+    "name": "Módulo vital I",
     "rarity": "common",
     "mods": [
       {
@@ -12,7 +12,7 @@
   },
   {
     "id": "rune_reroll_I",
-    "name": "Amuleto de impacto I",
+    "name": "Módulo cinético I",
     "rarity": "common",
     "mods": [
       {
@@ -23,7 +23,7 @@
   },
   {
     "id": "rune_die_II",
-    "name": "Amuleto vital II",
+    "name": "Módulo vital II",
     "rarity": "rare",
     "mods": [
       {
@@ -34,7 +34,7 @@
   },
   {
     "id": "rune_reroll_II",
-    "name": "Amuleto de impacto II",
+    "name": "Módulo cinético II",
     "rarity": "rare",
     "mods": [
       {
@@ -45,7 +45,7 @@
   },
   {
     "id": "rune_edge",
-    "name": "Amuleto de filo",
+    "name": "Módulo de filo",
     "rarity": "rare",
     "mods": [
       {
@@ -56,7 +56,7 @@
   },
   {
     "id": "rune_fury",
-    "name": "Amuleto de furia",
+    "name": "Módulo de sobrecarga",
     "rarity": "rare",
     "mods": [
       {

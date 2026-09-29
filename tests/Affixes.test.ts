@@ -26,9 +26,9 @@ describe('Forge affix pool', () => {
   })
 
   it('formats resist, element damage, and poison', () => {
-    expect(formatAffix(affixDef('resist_fire_m')!)).toBe('+3% R.I')
-    expect(formatAffix(affixDef('edmg_earth_u')!)).toBe('+1 DMG T')
-    expect(formatAffix(affixDef('poison_unique')!)).toBe('+1 VENENO')
+    expect(formatAffix(affixDef('resist_fire_m')!)).toBe('+3% R.T')
+    expect(formatAffix(affixDef('edmg_earth_u')!)).toBe('+1 DMG G')
+    expect(formatAffix(affixDef('poison_unique')!)).toBe('+1 CONTAM.')
     expect(formatAffix(affixDef('resist_all_legend')!)).toBe('+5% R.*')
     expect(formatAffix(affixDef('edmg_all_legend')!)).toBe('+1 DMG *')
     expect(formatAffix(affixDef('hp_s')!)).toBe('+2 HP')

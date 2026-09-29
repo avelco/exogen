@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-**dice-and-depths** ("Expugnatio") is a Phaser 4 + TypeScript dungeon-crawler card game. The canvas is 270×480 portrait pixel-art (`pixelArt: true`, FIT scaling) — all coordinates and font sizes assume this tiny resolution. Content and balance live in `src/data/*.json`; game logic is pure TypeScript in `src/domain/`; Phaser is UI-only.
+**dice-and-depths** ("Exogen") is a Phaser 4 + TypeScript sci-fi dungeon-crawler card game. The canvas is 270×480 portrait pixel-art (`pixelArt: true`, FIT scaling) — all coordinates and font sizes assume this tiny resolution. Content and balance live in `src/data/*.json`; game logic is pure TypeScript in `src/domain/`; Phaser is UI-only.
+
+The canonical setting is defined in [`docs/EXOGEN_WORLD_BIBLE.md`](docs/EXOGEN_WORLD_BIBLE.md). Player-facing content must respect its canon hierarchy, the year 3874 / 233 d.O., Sol Civilis terminology, bidirectional portals, Exogenous Drift, context dependence, and the hidden posthuman origin of the network. Do not reveal reserved truths directly in early in-world material.
 
 ## Architecture & Data Flow
 

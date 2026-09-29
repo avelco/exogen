@@ -26,7 +26,7 @@ const ROW_TOP = 92
 const ROW_STEP = 27
 
 export class LoreScene extends Phaser.Scene {
-  private thread: LoreThread = 'scavenger'
+  private thread: LoreThread = 'archive'
   private rows: LoreRow[] = []
   private tabTexts: Phaser.GameObjects.Text[] = []
   private progressTxt: Phaser.GameObjects.Text | null = null
@@ -38,7 +38,7 @@ export class LoreScene extends Phaser.Scene {
   }
 
   init() {
-    this.thread = 'scavenger'
+    this.thread = 'archive'
     this.rows = []
     this.tabTexts = []
     this.progressTxt = null

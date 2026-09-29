@@ -1,8 +1,8 @@
 import loreData from '../../data/lore.json'
 
-export type LoreThread = 'scavenger' | 'site'
+export type LoreThread = 'archive' | 'nadir'
 
-export const LORE_THREADS: readonly LoreThread[] = ['scavenger', 'site']
+export const LORE_THREADS: readonly LoreThread[] = ['archive', 'nadir']
 
 export interface LoreChapter {
   id: string
